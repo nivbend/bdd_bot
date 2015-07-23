@@ -1,14 +1,13 @@
-from os.path import isfile
 from os import mkdir, getcwd
 from errors import BotError
 
 class Dealer(object):
     def assign(self):
-        if not isfile("features.bank"):
+        try:
+            with open("features.bank", "rb") as bank_input:
+                whole_bank = bank_input.read()
+        except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
-
-        with open("features.bank", "rb") as bank_input:
-            whole_bank = bank_input.read()
 
         if not whole_bank:
             print("No more scenarios to deal")
