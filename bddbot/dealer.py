@@ -1,6 +1,11 @@
+from os.path import join
 from os import mkdir, getcwd
 from bank import split_bank
 from errors import BotError
+
+FEATURE_BANK_FILENAME = "features.bank"
+FEATURES_DIRECTORY = "features"
+OUTPUT_FEATURES_FILENAME = join(FEATURES_DIRECTORY, "all.feature")
 
 class Dealer(object):
     def __init__(self):
@@ -9,7 +14,7 @@ class Dealer(object):
 
     def assign(self):
         try:
-            with open("features.bank", "rb") as bank_input:
+            with open(FEATURE_BANK_FILENAME, "rb") as bank_input:
                 (header, self.__feature, self.__scenarios) = split_bank(bank_input.read())
         except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
@@ -17,8 +22,8 @@ class Dealer(object):
         if not self.__feature:
             print("No more scenarios to deal")
 
-        mkdir("features")
-        with open("features/all.feature", "wb") as features:
+        mkdir(FEATURES_DIRECTORY)
+        with open(OUTPUT_FEATURES_FILENAME, "wb") as features:
             features.write(header)
             features.write(self.__feature)
             if self.__scenarios:
