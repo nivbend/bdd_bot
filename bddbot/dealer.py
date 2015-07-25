@@ -22,9 +22,17 @@ class Dealer(object):
         if not self.__feature:
             print("No more scenarios to deal")
 
-        mkdir(FEATURES_DIRECTORY)
-        with open(OUTPUT_FEATURES_FILENAME, "wb") as features:
-            features.write(header)
-            features.write(self.__feature)
-            if self.__scenarios:
-                features.write(self.__scenarios[0])
+        try:
+            mkdir(FEATURES_DIRECTORY)
+        except OSError:
+            # Directory exists.
+            pass
+
+        try:
+            with open(OUTPUT_FEATURES_FILENAME, "wb") as features:
+                features.write(header)
+                features.write(self.__feature)
+                if self.__scenarios:
+                    features.write(self.__scenarios[0])
+        except IOError:
+            raise BotError("Couldn't write to '{}'".format(OUTPUT_FEATURES_FILENAME))
