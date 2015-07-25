@@ -10,7 +10,7 @@ class Dealer(object):
     def assign(self):
         try:
             with open("features.bank", "rb") as bank_input:
-                (self.__feature, self.__scenarios) = split_bank(bank_input.read())
+                (header, self.__feature, self.__scenarios) = split_bank(bank_input.read())
         except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
 
@@ -19,6 +19,7 @@ class Dealer(object):
 
         mkdir("features")
         with open("features/all.feature", "wb") as features:
+            features.write(header)
             features.write(self.__feature)
             if self.__scenarios:
                 features.write(self.__scenarios[0])
