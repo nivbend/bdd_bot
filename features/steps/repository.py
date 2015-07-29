@@ -6,12 +6,6 @@ from nose.tools import assert_true
 def a_repository_without_a_features_bank(context):
     assert not isfile("features.bank")
 
-@given("the features bank file is empty")
-def features_bank_is_empty(context):
-    # Create the file, but write nothing in it.
-    with open("features.bank", "wb") as bank:
-        pass
-
 @given("the features bank")
 def a_features_bank(context):
     with open("features.bank", "wb") as bank:

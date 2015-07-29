@@ -10,7 +10,9 @@ Feature: Initialize Bot
         And the "features" directory isn't created
 
     Scenario: No features in bank
-        Given the features bank file is empty
+        Given the features bank:
+            """
+            """
         When we first assign a scenario
         Then there are no more scenarios to deal
 
