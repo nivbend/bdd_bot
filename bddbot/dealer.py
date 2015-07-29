@@ -9,15 +9,22 @@ OUTPUT_FEATURES_FILENAME = join(FEATURES_DIRECTORY, "all.feature")
 
 class Dealer(object):
     def __init__(self):
+        self.__header = ""
         self.__feature = ""
         self.__scenarios = []
 
-    def assign(self):
+    def load(self):
+        if self.__feature:
+            return
+
         try:
             with open(FEATURE_BANK_FILENAME, "rb") as bank_input:
-                (header, self.__feature, self.__scenarios) = split_bank(bank_input.read())
+                (self.__header, self.__feature, self.__scenarios) = split_bank(bank_input.read())
         except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
+
+    def assign(self):
+        self.load()
 
         if not self.__feature:
             print("No more scenarios to deal")
@@ -30,7 +37,7 @@ class Dealer(object):
 
         try:
             with open(OUTPUT_FEATURES_FILENAME, "wb") as features:
-                features.write(header)
+                features.write(self.__header)
                 features.write(self.__feature)
                 if self.__scenarios:
                     features.write(self.__scenarios[0])
