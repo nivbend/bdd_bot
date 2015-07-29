@@ -14,5 +14,5 @@ Feature: Initialize Bot
             """
             """
         When we initialize the bot's state
-        And we first assign a scenario
+        And we first deal a scenario
         Then there are no more scenarios to deal

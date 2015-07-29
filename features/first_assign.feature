@@ -1,14 +1,14 @@
 Feature: Initialize Bot
     In order to start serving features on a repository
     As a repository's features moderator
-    I want to assign the first scenario in a feature file
+    I want to deal the first scenario in a feature file
 
     Scenario: One feature, no scenarios
         Given the features bank:
             """
             Feature: A feature with no scenarios
             """
-        When we first assign a scenario
+        When we first deal a scenario
         Then the "features/all.feature" file is created
         And "features/all.feature" contains:
             """
@@ -24,7 +24,7 @@ Feature: Initialize Bot
                     When something happens
                     Then stuff will go down
             """
-        When we first assign a scenario
+        When we first deal a scenario
         Then "features/all.feature" contains:
             """
             Feature: A single feature to test with
@@ -54,7 +54,7 @@ Feature: Initialize Bot
                     When all the chips have fallen
                     Then will the fat lasy sing
             """
-        When we first assign a scenario
+        When we first deal a scenario
         Then "features/all.feature" contains:
             """
             Feature: A single feature to test with
@@ -89,7 +89,7 @@ Feature: Initialize Bot
                     When all the chips have fallen
                     Then will the fat lasy sing
             """
-        When we first assign a scenario
+        When we first deal a scenario
         Then "features/all.feature" contains:
             """
             Feature: A single feature to test with

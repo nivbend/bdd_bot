@@ -60,7 +60,7 @@ class TestOutput(object):
     def test_features_directory_already_exists(self):
         self.mocked_mkdir.side_effect = OSError()
 
-        self.dealer.assign()
+        self.dealer.deal()
 
         # If directory already exist, we should proceed as usual.
         self.mocked_open().write.assert_any_call(self.CONTENT)
@@ -69,7 +69,7 @@ class TestOutput(object):
         self.mocked_open.side_effect = [IOError(), DEFAULT, ]
 
         with assert_raises(BotError):
-            self.dealer.assign()
+            self.dealer.deal()
 
         # Couldn't open file for writing, so obviously no writes were perfomed.
         self.mocked_open().write.assert_not_called()
@@ -78,7 +78,7 @@ class TestOutput(object):
         self.mocked_open().write.side_effect = IOError()
 
         with assert_raises(BotError):
-            self.dealer.assign()
+            self.dealer.deal()
 
         # First call to write() raised an IOError which was caught and translated.
         self.mocked_open().write.assert_called_once_with(ANY)

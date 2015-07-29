@@ -23,7 +23,7 @@ class Dealer(object):
         except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
 
-    def assign(self):
+    def deal(self):
         self.load()
 
         if not self.__feature:
