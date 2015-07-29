@@ -1,4 +1,3 @@
-from os import strerror
 from nose.tools import assert_raises
 from mock import ANY, DEFAULT, MagicMock, mock_open, patch
 from bddbot import Dealer
