@@ -4,16 +4,43 @@ from bddbot import Dealer
 from bddbot.dealer import BotError
 from bddbot.dealer import FEATURE_BANK_FILENAME, FEATURES_DIRECTORY, OUTPUT_FEATURES_FILENAME
 
-class TestLoading(object):
-    def setup(self):
-        self.mocked_open = mock_open(read_data = "Feature: Awesome stuff")
+class BaseDealerTest(object):
+    def _mock_dealer_functions(self, content = ""):
+        self.mocked_open = mock_open(read_data = content)
+        self.mocked_mkdir = MagicMock()
         patcher = patch.multiple("bddbot.dealer",
-            open = self.mocked_open)
+            open = self.mocked_open,
+            mkdir = self.mocked_mkdir)
 
         patcher.start()
 
+        return patcher
+
+    def _load_dealer(self):
+        dealer = Dealer()
+        dealer.load()
+
+        # Assert actions during load().
+        self.mocked_open.assert_called_once_with(FEATURE_BANK_FILENAME, "rb")
+        self.mocked_open().read.assert_called_once_with()
+        self.mocked_mkdir.assert_not_called()
+
+        # Reset mocks.
+        self.mocked_open.reset_mock()
+        self.mocked_mkdir.reset_mock()
+
+        return dealer
+
+class TestLoading(BaseDealerTest):
+    CONTENT = "Feature: Some awesome stuff"
+
+    def setup(self):
+        self._mock_dealer_functions(content = self.CONTENT)
+
     def teardown(self):
         patch.stopall()
+
+        self.mocked_mkdir.assert_not_called()
 
     def test_no_features_bank_file(self):
         self.mocked_open.side_effect = IOError()
@@ -37,19 +64,12 @@ class TestLoading(object):
 
         self.mocked_open.assert_called_once_with(FEATURE_BANK_FILENAME, "rb")
 
-class TestOutput(object):
+class TestOutput(BaseDealerTest):
     CONTENT = "Feature: Stuff"
 
     def setup(self):
-        self.mocked_open = mock_open(read_data = self.CONTENT)
-        self.mocked_mkdir = MagicMock()
-        patcher = patch.multiple("bddbot.dealer",
-            open = self.mocked_open,
-            mkdir = self.mocked_mkdir)
-
-        patcher.start()
-
-        self._load_dealer()
+        self._mock_dealer_functions(content = self.CONTENT)
+        self.dealer = self._load_dealer()
 
     def teardown(self):
         patch.stopall()
@@ -82,16 +102,3 @@ class TestOutput(object):
 
         # First call to write() raised an IOError which was caught and translated.
         self.mocked_open().write.assert_called_once_with(ANY)
-
-    def _load_dealer(self):
-        self.dealer = Dealer()
-        self.dealer.load()
-
-        # Assert actions during load().
-        self.mocked_open.assert_called_once_with(FEATURE_BANK_FILENAME, "rb")
-        self.mocked_open().read.assert_called_once_with()
-        self.mocked_mkdir.assert_not_called()
-
-        # Reset mocks.
-        self.mocked_open.reset_mock()
-        self.mocked_mkdir.reset_mock()
