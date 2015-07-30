@@ -70,3 +70,29 @@ Feature: Deal another scenario
                     When we calculate the outcome
                     Then the result is 2
             """
+
+    Scenario: Last scenario implemented properly
+        Given the file "calc/calculator.py" contains:
+            """
+            def calculate(value_1, operator, value_2):
+                # This isn't a full solution yet but hey, baby, that's TDD.
+                return value_1 + value_2
+            """
+        When we deal another scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: Basic calculator operations
+                Scenario: Adding
+                    Given a value of 1 was entered
+                    And the '+' button was pressed
+                    And a value of 1 was entered
+                    When we calculate the outcome
+                    Then the result is 2
+
+                Scenario: Subtracting
+                    Given a value of 5 was entered
+                    And the '-' button was pressed
+                    And a value of 2 was entered
+                    When we calculate the outcome
+                    Then the result is 3
+            """
