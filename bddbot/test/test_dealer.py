@@ -138,6 +138,17 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
         assert_equal("", self.stdout)
 
+    def test_empty_features_bank(self):
+        self._mock_dealer_functions(content = "")
+        dealer = self._load_dealer()
+
+        dealer.deal()
+
+        # If directory already exist, we should proceed as usual.
+        self.mocked_open.assert_not_called()
+        self.mocked_mkdir.assert_not_called()
+        assert_in("no more scenarios", self.stdout.lower())
+
     def test_features_directory_already_exists(self):
         self._mock_dealer_functions(content = "\n".join(self.DEFAULT_CONTENTS))
         dealer = self._load_dealer()

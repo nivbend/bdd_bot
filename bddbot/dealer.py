@@ -9,12 +9,13 @@ OUTPUT_FEATURES_FILENAME = join(FEATURES_DIRECTORY, "all.feature")
 
 class Dealer(object):
     def __init__(self):
+        self.__is_loaded = False
         self.__header = ""
         self.__feature = ""
         self.__scenarios = []
 
     def load(self):
-        if self.__feature:
+        if self.__is_loaded:
             return
 
         try:
@@ -23,11 +24,14 @@ class Dealer(object):
         except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
 
+        self.__is_loaded = True
+
     def deal(self):
         self.load()
 
         if not self.__feature:
             print("No more scenarios to deal")
+            return
 
         try:
             mkdir(FEATURES_DIRECTORY)
