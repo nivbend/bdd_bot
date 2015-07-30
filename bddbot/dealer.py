@@ -30,7 +30,7 @@ class Dealer(object):
         self.load()
 
         if not self.__feature:
-            print("No more scenarios to deal")
+            self._done()
             return
 
         try:
@@ -45,5 +45,10 @@ class Dealer(object):
                 features.write(self.__feature)
                 if self.__scenarios:
                     features.write(self.__scenarios[0])
+                else:
+                    self._done()
         except IOError:
             raise BotError("Couldn't write to '{}'".format(OUTPUT_FEATURES_FILENAME))
+
+    def _done(self):
+        print("No more scenarios to deal")
