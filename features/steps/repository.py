@@ -1,5 +1,6 @@
 from behave import given, then
-from os.path import isdir, isfile
+from os import makedirs
+from os.path import isdir, isfile, dirname
 from nose.tools import assert_true
 from bddbot.errors import BotError
 
@@ -11,6 +12,17 @@ def a_repository_without_a_features_bank(context):
 def a_features_bank(context):
     with open("features.bank", "wb") as bank:
         bank.write(context.text)
+
+@given("the file \"{filename}\" contains")
+def the_file_contains(context, filename):
+    try:
+        makedirs(dirname(filename))
+    except OSError:
+        # Directory already exist.
+        pass
+
+    with open(filename, "wb") as output:
+        output.write(context.text)
 
 @when("we initialize the bot's state")
 def load_state(context):
