@@ -48,7 +48,7 @@ class Dealer(object):
                 else:
                     self._done()
         except IOError:
-            raise BotError("Couldn't write to '{}'".format(OUTPUT_FEATURES_FILENAME))
+            raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
 
     def _done(self):
         print("No more scenarios to deal")
