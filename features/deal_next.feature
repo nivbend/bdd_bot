@@ -20,6 +20,20 @@ Feature: Deal another scenario
                     And a value of 2 was entered
                     When we calculate the outcome
                     Then the result is 3
+
+                Scenario: Multiplying
+                    Given a value of 3 was entered
+                    And the '*' button was pressed
+                    And a value of 7 was entered
+                    When we calculate the outcome
+                    Then the result is 21
+
+                Scenario: Dividing
+                    Given a value of 45 was entered
+                    And the '/' button was pressed
+                    And a value of 9 was entered
+                    When we calculate the outcome
+                    Then the result is 5
             """
         And the file "features/steps/calculator.py" contains:
             """
@@ -50,7 +64,6 @@ Feature: Deal another scenario
             """
             from calculator import calculate
             """
-        And we dealt 1 scenario/s
 
     Scenario: Last scenario isn't implemented
         Given the file "calc/calculator.py" contains:
@@ -59,6 +72,7 @@ Feature: Deal another scenario
                 # This is bound to fail.
                 return None
             """
+        And we dealt 1 scenario/s
         When we deal another scenario
         Then "features/all.feature" contains:
             """
@@ -78,6 +92,7 @@ Feature: Deal another scenario
                 # This isn't a full solution yet but hey, baby, that's TDD.
                 return value_1 + value_2
             """
+        And we dealt 1 scenario/s
         When we deal another scenario
         Then "features/all.feature" contains:
             """
@@ -96,3 +111,97 @@ Feature: Deal another scenario
                     When we calculate the outcome
                     Then the result is 3
             """
+
+    Scenario: Deal more than two scenarios
+        Given the file "calc/calculator.py" contains:
+            """
+            OPERATIONS = {
+                "+": lambda a,b: a + b,
+                "-": lambda a,b: a - b,
+                "*": lambda a,b: a * b,
+            }
+
+            def calculate(value_1, operator, value_2):
+                return OPERATIONS[operator](value_1, value_2)
+            """
+        And we dealt 3 scenario/s
+        When we deal another scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: Basic calculator operations
+                Scenario: Adding
+                    Given a value of 1 was entered
+                    And the '+' button was pressed
+                    And a value of 1 was entered
+                    When we calculate the outcome
+                    Then the result is 2
+
+                Scenario: Subtracting
+                    Given a value of 5 was entered
+                    And the '-' button was pressed
+                    And a value of 2 was entered
+                    When we calculate the outcome
+                    Then the result is 3
+
+                Scenario: Multiplying
+                    Given a value of 3 was entered
+                    And the '*' button was pressed
+                    And a value of 7 was entered
+                    When we calculate the outcome
+                    Then the result is 21
+
+                Scenario: Dividing
+                    Given a value of 45 was entered
+                    And the '/' button was pressed
+                    And a value of 9 was entered
+                    When we calculate the outcome
+                    Then the result is 5
+            """
+
+    Scenario: Deal all scenarios
+        Given the file "calc/calculator.py" contains:
+            """
+            OPERATIONS = {
+                "+": lambda a,b: a + b,
+                "-": lambda a,b: a - b,
+                "*": lambda a,b: a * b,
+                "/": lambda a,b: a / b,
+            }
+
+            def calculate(value_1, operator, value_2):
+                return OPERATIONS[operator](value_1, value_2)
+            """
+        And we dealt 4 scenario/s
+        When we deal another scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: Basic calculator operations
+                Scenario: Adding
+                    Given a value of 1 was entered
+                    And the '+' button was pressed
+                    And a value of 1 was entered
+                    When we calculate the outcome
+                    Then the result is 2
+
+                Scenario: Subtracting
+                    Given a value of 5 was entered
+                    And the '-' button was pressed
+                    And a value of 2 was entered
+                    When we calculate the outcome
+                    Then the result is 3
+
+                Scenario: Multiplying
+                    Given a value of 3 was entered
+                    And the '*' button was pressed
+                    And a value of 7 was entered
+                    When we calculate the outcome
+                    Then the result is 21
+
+                Scenario: Dividing
+                    Given a value of 45 was entered
+                    And the '/' button was pressed
+                    And a value of 9 was entered
+                    When we calculate the outcome
+                    Then the result is 5
+            """
+        And there are no more scenarios to deal
