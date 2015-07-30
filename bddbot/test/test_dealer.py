@@ -1,10 +1,25 @@
-from nose.tools import assert_raises
+from cStringIO import StringIO
+from nose.tools import assert_raises, assert_equal
 from mock import ANY, DEFAULT, MagicMock, mock_open, patch
 from bddbot import Dealer
 from bddbot.dealer import BotError
 from bddbot.dealer import FEATURE_BANK_FILENAME, FEATURES_DIRECTORY, OUTPUT_FEATURES_FILENAME
 
 class BaseDealerTest(object):
+    @property
+    def stdout(self):
+        try:
+            return self.__stdout.getvalue()
+        except AttributeError:
+            return None
+
+    def _capture_stdout(self):
+        self.__stdout = StringIO()
+        patcher = patch("sys.stdout", self.__stdout)
+        patcher.start()
+
+        return patcher
+
     def _mock_dealer_functions(self, content = ""):
         self.mocked_open = mock_open(read_data = content)
         self.mocked_mkdir = MagicMock()
@@ -35,12 +50,14 @@ class TestLoading(BaseDealerTest):
     CONTENT = "Feature: Some awesome stuff"
 
     def setup(self):
+        self._capture_stdout()
         self._mock_dealer_functions(content = self.CONTENT)
 
     def teardown(self):
         patch.stopall()
 
         self.mocked_mkdir.assert_not_called()
+        assert_equal("", self.stdout)
 
     def test_no_features_bank_file(self):
         self.mocked_open.side_effect = IOError()
@@ -68,6 +85,7 @@ class TestOutput(BaseDealerTest):
     CONTENT = "Feature: Stuff"
 
     def setup(self):
+        self._capture_stdout()
         self._mock_dealer_functions(content = self.CONTENT)
         self.dealer = self._load_dealer()
 
@@ -76,6 +94,7 @@ class TestOutput(BaseDealerTest):
 
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
+        assert_equal("", self.stdout)
 
     def test_features_directory_already_exists(self):
         self.mocked_mkdir.side_effect = OSError()
