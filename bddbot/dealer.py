@@ -56,10 +56,9 @@ class Dealer(object):
             if self._are_tests_passing():
                 self._deal_another()
             else:
-                # pylint: disable=superfluous-parens
-                print("Can't deal while there are unimplemented scenarios")
+                raise BotError("Can't deal while there are unimplemented scenarios")
         else:
-            self._done()
+            self.__is_done = True
 
     def _are_tests_passing(self):
         """Verify that all scenarios were implemented using `behave`."""
@@ -79,7 +78,7 @@ class Dealer(object):
         self.load()
 
         if not self.__feature:
-            self._done()
+            self.__is_done = True
             return
 
         try:
@@ -97,7 +96,7 @@ class Dealer(object):
                     features.write(scenario)
                     self.__scenarios[0] = (True, scenario)
                 else:
-                    self._done()
+                    self.__is_done = True
         except IOError:
             raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
 
@@ -113,9 +112,3 @@ class Dealer(object):
                         break
         except IOError:
             raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
-
-    def _done(self):
-        """Notify that there are no more scenarios to deal."""
-        # pylint: disable=superfluous-parens
-        self.__is_done = True
-        print("No more scenarios to deal")

@@ -1,8 +1,7 @@
 """Test the Dealer class."""
 
-from cStringIO import StringIO
 from subprocess import PIPE
-from nose.tools import assert_raises, assert_in, assert_equal
+from nose.tools import assert_raises, assert_in
 from mock import ANY, DEFAULT, MagicMock, mock_open, patch
 from bddbot import Dealer
 from bddbot.dealer import BotError
@@ -12,26 +11,9 @@ class BaseDealerTest(object):
     """A container for utility classes common when testing the Dealer class."""
     # pylint: disable=too-few-public-methods
     def __init__(self):
-        self.__stdout = None
         self.mocked_open = None
         self.mocked_mkdir = None
         self.mocked_popen = None
-
-    @property
-    def stdout(self):
-        """Get everything captured on stdout as a string."""
-        if self.__stdout is None:
-            return None
-
-        return self.__stdout.getvalue()
-
-    def _capture_stdout(self):
-        """Mock out stdout to capture any calls to print."""
-        self.__stdout = StringIO()
-        patcher = patch("sys.stdout", self.__stdout)
-        patcher.start()
-
-        return patcher
 
     def _mock_dealer_functions(self, content = ""):
         """Mock out standard library functions used by the dealer module."""
@@ -71,7 +53,6 @@ class TestLoading(BaseDealerTest):
     CONTENT = "Feature: Some awesome stuff"
 
     def setup(self):
-        self._capture_stdout()
         self._mock_dealer_functions(content = self.CONTENT)
 
     def teardown(self):
@@ -79,7 +60,6 @@ class TestLoading(BaseDealerTest):
 
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        assert_equal("", self.stdout)
 
     def test_no_features_bank_file(self):
         """Catch exception when trying to open a non-existent bank file."""
@@ -118,9 +98,6 @@ class TestDealFirst(BaseDealerTest):
         "  Scenario: Scenario B",
         ]
 
-    def setup(self):
-        self._capture_stdout()
-
     def teardown(self):
         patch.stopall()
 
@@ -141,7 +118,6 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_open().write.assert_not_called()
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
-        assert_equal("", self.stdout)
 
     def test_cant_write_to_feature_file(self):
         """Capture exceptions in write()."""
@@ -158,7 +134,6 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_open().write.assert_called_once_with(ANY)
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
-        assert_equal("", self.stdout)
 
     def test_successful_write(self):
         """A successful call to deal() should write the feature and the first scenario."""
@@ -172,7 +147,6 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[0] + "\n")
         self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[1] + "\n")
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
-        assert_equal("", self.stdout)
 
     def test_empty_features_bank(self):
         """Dealing from an empty feature file should give the 'done' message."""
@@ -185,7 +159,6 @@ class TestDealFirst(BaseDealerTest):
         assert dealer.is_done
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
-        assert_in("no more scenarios", self.stdout.lower())
 
     def test_feature_with_no_scenarios(self):
         """Dealing a "null" feature should give the 'done' message."""
@@ -200,7 +173,6 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_open().write.assert_any_call(feature)
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
-        assert_in("no more scenarios", self.stdout.lower())
 
     def test_features_directory_already_exists(self):
         """Test deal() works even if the features directory already exist."""
@@ -216,7 +188,6 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[0] + "\n")
         self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[1] + "\n")
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
-        assert_equal("", self.stdout)
 
 class TestDealNext(BaseDealerTest):
     """Test logic and actions when calling deal() continously."""
@@ -225,9 +196,6 @@ class TestDealNext(BaseDealerTest):
         "  Scenario: First scenario",
         "", # A new-line for the assertion in _deal_first(), with/out more scenarios.
         ]
-
-    def setup(self):
-        self._capture_stdout()
 
     def teardown(self):
         # pylint: disable=no-self-use
@@ -244,7 +212,6 @@ class TestDealNext(BaseDealerTest):
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        assert_in("no more scenarios", self.stdout.lower())
 
     def test_should_not_deal_another(self):
         """If a scenario fails, don't deal another scenario."""
@@ -257,14 +224,15 @@ class TestDealNext(BaseDealerTest):
         dealer = self._deal_first()
 
         self.mocked_popen().returncode = -1
-        dealer.deal()
+        with assert_raises(BotError) as error_context:
+            dealer.deal()
 
         assert not dealer.is_done
+        assert_in("can't deal", error_context.exception.message.lower())
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call("behave", stdout = PIPE, stderr = PIPE)
         self.mocked_popen().wait.assert_called_once_with()
-        assert_in("can't deal", self.stdout.lower())
 
     def test_should_deal_another(self):
         """When all scenarios pass, deal a new scenario."""
@@ -285,7 +253,6 @@ class TestDealNext(BaseDealerTest):
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call("behave", stdout = PIPE, stderr = PIPE)
         self.mocked_popen().wait.assert_called_once_with()
-        assert_in("", self.stdout.lower())
 
     def _deal_first(self):
         """Simulate dealing the first scenario and verify success."""
@@ -297,7 +264,6 @@ class TestDealNext(BaseDealerTest):
         self.mocked_open().write.assert_any_call(self.BASE_CONTENTS[0] + "\n")
         self.mocked_open().write.assert_any_call(self.BASE_CONTENTS[1] + "\n")
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
-        assert_equal("", self.stdout)
 
         self.mocked_open.reset_mock()
         self.mocked_mkdir.reset_mock()

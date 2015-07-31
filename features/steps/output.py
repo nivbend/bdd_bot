@@ -11,4 +11,4 @@ def an_error_is_raised(context, message):
 @then("there are no more scenarios to deal")
 def no_more_features(context):
     assert_is_none(context.error)
-    assert_in("no more scenarios to deal", context.stdout_capture.getvalue().lower())
+    assert context.dealer.is_done
