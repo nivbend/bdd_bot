@@ -50,7 +50,8 @@ class Dealer(object):
             if self._are_tests_passing():
                 self._deal_another()
             else:
-                print "Can't deal while there are unimplemented scenarios"
+                # pylint: disable=superfluous-parens
+                print("Can't deal while there are unimplemented scenarios")
         else:
             self._done()
 
