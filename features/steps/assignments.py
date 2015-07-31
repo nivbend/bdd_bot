@@ -2,10 +2,10 @@ from behave import when, then
 from nose.tools import assert_multi_line_equal
 from bddbot.errors import BotError
 
-@when("we first assign a scenario")
-def we_first_assign_a_scenario(context):
+@when("we first deal a scenario")
+def we_first_deal_a_scenario(context):
     try:
-        context.dealer.assign()
+        context.dealer.deal()
     except BotError as error:
         context.error = error
 
