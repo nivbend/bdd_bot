@@ -18,9 +18,15 @@ class Dealer(object):
     """
     def __init__(self):
         self.__is_loaded = False
+        self.__is_done = False
         self.__header = ""
         self.__feature = ""
         self.__scenarios = []
+
+    @property
+    def is_done(self):
+        """Return True if no more scenarios are left to deal."""
+        return self.__is_done
 
     def load(self):
         """Load a feature from the bank."""
@@ -110,5 +116,6 @@ class Dealer(object):
 
     def _done(self):
         """Notify that there are no more scenarios to deal."""
-        # pylint: disable=no-self-use, superfluous-parens
+        # pylint: disable=superfluous-parens
+        self.__is_done = True
         print("No more scenarios to deal")

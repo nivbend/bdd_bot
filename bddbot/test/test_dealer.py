@@ -89,6 +89,7 @@ class TestLoading(BaseDealerTest):
         with assert_raises(BotError) as error_context:
             dealer.load()
 
+        assert not dealer.is_done
         assert_in("no features bank", error_context.exception.message.lower())
         self.mocked_open.assert_called_once_with(FEATURE_BANK_FILENAME, "rb")
 
@@ -97,6 +98,7 @@ class TestLoading(BaseDealerTest):
         dealer = Dealer()
         dealer.load()
 
+        assert not dealer.is_done
         self.mocked_open.assert_called_once_with(FEATURE_BANK_FILENAME, "rb")
 
     def test_call_load_twice(self):
@@ -105,6 +107,7 @@ class TestLoading(BaseDealerTest):
         dealer.load()
         dealer.load()
 
+        assert not dealer.is_done
         self.mocked_open.assert_called_once_with(FEATURE_BANK_FILENAME, "rb")
 
 class TestDealFirst(BaseDealerTest):
@@ -133,6 +136,7 @@ class TestDealFirst(BaseDealerTest):
             dealer.deal()
 
         # Couldn't open file for writing, so obviously no writes were perfomed.
+        assert not dealer.is_done
         assert_in("couldn't write", error_context.exception.message.lower())
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_open().write.assert_not_called()
@@ -149,6 +153,7 @@ class TestDealFirst(BaseDealerTest):
             dealer.deal()
 
         # First call to write() raised an IOError which was caught and translated.
+        assert not dealer.is_done
         assert_in("couldn't write", error_context.exception.message.lower())
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_open().write.assert_called_once_with(ANY)
@@ -162,6 +167,7 @@ class TestDealFirst(BaseDealerTest):
 
         dealer.deal()
 
+        assert not dealer.is_done
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[0] + "\n")
         self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[1] + "\n")
@@ -176,6 +182,7 @@ class TestDealFirst(BaseDealerTest):
         dealer.deal()
 
         # If directory already exist, we should proceed as usual.
+        assert dealer.is_done
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         assert_in("no more scenarios", self.stdout.lower())
@@ -189,6 +196,7 @@ class TestDealFirst(BaseDealerTest):
         dealer.deal()
 
         # If directory already exist, we should proceed as usual.
+        assert dealer.is_done
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_open().write.assert_any_call(feature)
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
@@ -203,6 +211,7 @@ class TestDealFirst(BaseDealerTest):
         dealer.deal()
 
         # If directory already exist, we should proceed as usual.
+        assert not dealer.is_done
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
         self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[0] + "\n")
         self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[1] + "\n")
@@ -231,6 +240,7 @@ class TestDealNext(BaseDealerTest):
 
         dealer.deal()
 
+        assert dealer.is_done
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
@@ -249,6 +259,7 @@ class TestDealNext(BaseDealerTest):
         self.mocked_popen().returncode = -1
         dealer.deal()
 
+        assert not dealer.is_done
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call("behave", stdout = PIPE, stderr = PIPE)
@@ -268,6 +279,7 @@ class TestDealNext(BaseDealerTest):
         self.mocked_popen().returncode = 0
         dealer.deal()
 
+        assert not dealer.is_done
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "ab")
         self.mocked_open().write.assert_any_call("\n" + expected_scenario + "\n")
         self.mocked_mkdir.assert_not_called()
