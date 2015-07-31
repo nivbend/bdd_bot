@@ -1,28 +1,32 @@
 # pylint: disable=missing-docstring, no-name-in-module, invalid-name
 
 from behave import given, when, then
-from nose.tools import assert_multi_line_equal
+from nose.tools import assert_equal, assert_greater, assert_multi_line_equal
 from bddbot.errors import BotError
 
 @given("we dealt {count:n} scenario/s")
 def we_dealt_n_scenarios(context, count):
-    try:
-        for _ in xrange(count):
-            context.dealer.deal()
-    except BotError as error:
-        context.error = error
+    for _ in xrange(count):
+        context.dealer.deal()
+        context.dealt += 1
 
 @when("we first deal a scenario")
 def we_first_deal_a_scenario(context):
+    assert_equal(0, context.dealt)
+
     try:
         context.dealer.deal()
+        context.dealt += 1
     except BotError as error:
         context.error = error
 
 @when("we deal another scenario")
 def we_deal_another_scenario(context):
+    assert_greater(context.dealt, 0)
+
     try:
         context.dealer.deal()
+        context.dealt += 1
     except BotError as error:
         context.error = error
 

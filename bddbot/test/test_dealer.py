@@ -1,7 +1,7 @@
 """Test the Dealer class."""
 
 from subprocess import PIPE
-from nose.tools import assert_raises, assert_in
+from nose.tools import assert_in, assert_raises
 from mock import ANY, DEFAULT, MagicMock, mock_open, patch
 from bddbot import Dealer
 from bddbot.dealer import BotError

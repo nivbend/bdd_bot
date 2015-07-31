@@ -13,6 +13,7 @@ def before_scenario(context, scenario):
 
     # Reset attributes.
     context.dealer = Dealer()
+    context.dealt = 0
     context.error = None
 
 def after_scenario(context, scenario):
