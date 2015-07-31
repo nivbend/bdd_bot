@@ -7,6 +7,7 @@ from os.path import join
 from os import mkdir, getcwd
 from subprocess import Popen, PIPE
 from .bank import split_bank
+from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
 from .errors import BotError
 
 FEATURE_BANK_FILENAME = "features.bank"
@@ -16,7 +17,8 @@ OUTPUT_FEATURES_FILENAME = join(FEATURES_DIRECTORY, "all.feature")
 class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented.
     """
-    def __init__(self):
+    def __init__(self, config = DEFAULT_CONFIG_FILENAME):
+        self.__config = BotConfiguration(config)
         self.__is_loaded = False
         self.__is_done = False
         self.__header = ""
@@ -62,12 +64,15 @@ class Dealer(object):
 
     def _are_tests_passing(self):
         """Verify that all scenarios were implemented using `behave`."""
-        # pylint: disable=no-self-use
-        process = Popen("behave", stdout = PIPE, stderr = PIPE)
-        process.wait()
+        for command in self.__config.test_commands:
+            process = Popen(command, stdout = PIPE, stderr = PIPE)
+            process.wait()
 
-        # pylint: disable=superfluous-parens
-        return (0 == process.returncode)
+            # pylint: disable=superfluous-parens
+            if (0 != process.returncode):
+                return False
+
+        return True
 
     def _deal_first(self):
         """Deal the very first scenario in the bank.
