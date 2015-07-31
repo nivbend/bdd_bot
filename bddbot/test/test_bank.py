@@ -1,12 +1,17 @@
+"""Test the bank module."""
+# pylint: disable=invalid-name
+
 import itertools
 from nose.tools import assert_equal, assert_multi_line_equal
 from bddbot.dealer import split_bank
 
 def test_without_header():
+    """Test splitting feature files without headers."""
     for (contents, feature, scenarios) in TEST_CASES:
         yield (_check_split_bank, ("", feature, scenarios), contents)
 
 def test_with_header():
+    """Test splitting feature files with headers."""
     header_text = "Some header text.\n"
     for (contents, feature, scenarios) in TEST_CASES:
         yield (_check_split_bank,
@@ -27,6 +32,7 @@ def _assert_equal_without_spaces(expected, actual):
         _strip_whitespace(actual))
 
 def _check_split_bank(expected, text):
+    """Compare two bank splits by their structure."""
     (expected_header, expected_feature, expected_scenarios) = expected
     (actual_header, actual_feature, actual_scenarios) = split_bank(text)
 

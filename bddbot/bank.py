@@ -1,9 +1,17 @@
+"""Split a bank (basically a feature file) to its feature definition and its scenarios.
+"""
 import re
 
 REGEX_FEATURE_START = re.compile(r"^\s*Feature:", re.MULTILINE)
 REGEX_SCENARIO_START = re.compile(r"^\s*Scenario:", re.MULTILINE)
 
 def split_bank(bank):
+    """Split a bank (feature) file to three parts: header, feature and scenarios.
+
+    The header is everything preceding the 'Feature:' part.
+    The feature is the everything until the first 'Scenario:' part.
+    The scenarios are returned as a list.
+    """
     # Find the first occurence of 'Feature:'. Everything thing before that is the header.
     feature_match = REGEX_FEATURE_START.search(bank)
     if not feature_match:

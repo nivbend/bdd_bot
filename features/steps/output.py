@@ -1,3 +1,5 @@
+# pylint: disable=missing-docstring, no-name-in-module, invalid-name
+
 from behave import then
 from nose.tools import assert_is_not_none, assert_is_none, assert_in
 

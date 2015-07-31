@@ -1,14 +1,21 @@
+"""Deal scenarios from bank files.
+
+Dealing reads a new scenario every time from a bank file and appends it to the feature
+file, if all of the previous scenarios were properly implemented.
+"""
 from os.path import join
 from os import mkdir, getcwd
 from subprocess import Popen, PIPE
-from bank import split_bank
-from errors import BotError
+from .bank import split_bank
+from .errors import BotError
 
 FEATURE_BANK_FILENAME = "features.bank"
 FEATURES_DIRECTORY = "features"
 OUTPUT_FEATURES_FILENAME = join(FEATURES_DIRECTORY, "all.feature")
 
 class Dealer(object):
+    """Manage banks of features to dispense whenever a scenario is implemented.
+    """
     def __init__(self):
         self.__is_loaded = False
         self.__header = ""
@@ -16,6 +23,7 @@ class Dealer(object):
         self.__scenarios = []
 
     def load(self):
+        """Load a feature from the bank."""
         if self.__is_loaded:
             return
 
@@ -29,6 +37,11 @@ class Dealer(object):
         self.__is_loaded = True
 
     def deal(self):
+        """Deal a scenario from the bank.
+
+        If this is the first scenario, call _deal_first(). If not, as long as there
+        are more scenarios in the bank call _deal_another().
+        """
         deal_flags = (was_dealt for (was_dealt, _) in self.__scenarios)
 
         if not any(deal_flags):
@@ -42,12 +55,20 @@ class Dealer(object):
             self._done()
 
     def _are_tests_passing(self):
+        """Verify that all scenarios were implemented using `behave`."""
+        # pylint: disable=no-self-use
         process = Popen("behave", stdout = PIPE, stderr = PIPE)
         process.wait()
 
+        # pylint: disable=superfluous-parens
         return (0 == process.returncode)
 
     def _deal_first(self):
+        """Deal the very first scenario in the bank.
+
+        This will create the feature file and fill it with the feature's text,
+        background, etc.
+        """
         self.load()
 
         if not self.__feature:
@@ -65,7 +86,7 @@ class Dealer(object):
                 features.write(self.__header)
                 features.write(self.__feature)
                 if self.__scenarios:
-                    (was_dealt, scenario) = self.__scenarios[0]
+                    (_, scenario) = self.__scenarios[0]
                     features.write(scenario)
                     self.__scenarios[0] = (True, scenario)
                 else:
@@ -74,6 +95,7 @@ class Dealer(object):
             raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
 
     def _deal_another(self):
+        """Deal a new scenario (not the first one)."""
         try:
             with open(OUTPUT_FEATURES_FILENAME, "ab") as features:
                 for i in xrange(len(self.__scenarios)):
@@ -86,4 +108,6 @@ class Dealer(object):
             raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
 
     def _done(self):
+        """Notify that there are no more scenarios to deal."""
+        # pylint: disable=no-self-use, superfluous-parens
         print("No more scenarios to deal")

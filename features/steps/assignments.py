@@ -1,11 +1,13 @@
-from behave import when, then
+# pylint: disable=missing-docstring, no-name-in-module, invalid-name
+
+from behave import given, when, then
 from nose.tools import assert_multi_line_equal
 from bddbot.errors import BotError
 
 @given("we dealt {count:n} scenario/s")
 def we_dealt_n_scenarios(context, count):
     try:
-        for i in xrange(count):
+        for _ in xrange(count):
             context.dealer.deal()
     except BotError as error:
         context.error = error

@@ -1,10 +1,12 @@
+# pylint: disable=missing-docstring
+
 from tempfile import mkdtemp
-from os import chdir, devnull
+from os import chdir
 from shutil import rmtree
-from subprocess import check_call
 from bddbot import Dealer
 
 def before_scenario(context, scenario):
+    # pylint: disable=unused-argument
     # Setup a temporary directory for the scenario to run in.
     context.temp_dir = mkdtemp()
     chdir(context.temp_dir)
@@ -14,5 +16,6 @@ def before_scenario(context, scenario):
     context.error = None
 
 def after_scenario(context, scenario):
+    # pylint: disable=unused-argument
     # Delete temporary sandbox directory.
     rmtree(context.temp_dir)
