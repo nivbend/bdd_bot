@@ -30,4 +30,5 @@ def we_deal_another_scenario(context):
 def file_contains(context, filename):
     with open(filename, "rb") as feature_file:
         features = feature_file.read()
+
     assert_multi_line_equal(context.text.strip(" \n"), features.strip(" \n"))

@@ -3,7 +3,8 @@
 from behave import given, when, then
 from os import makedirs
 from os.path import isdir, isfile, dirname
-from nose.tools import assert_true
+from nose.tools import assert_true, assert_false
+from bddbot.dealer import FEATURE_BANK_FILENAME
 from bddbot.errors import BotError
 
 @given("the features bank file doesn't exist")
@@ -13,11 +14,12 @@ def a_repository_without_a_features_bank(context):
 
 @given("the features bank")
 def a_features_bank(context):
-    with open("features.bank", "wb") as bank:
-        bank.write(context.text)
+    the_file_contains(context, FEATURE_BANK_FILENAME)
 
 @given("the file \"{filename}\" contains")
 def the_file_contains(context, filename):
+    assert_false(isfile(filename), "'{:s}' already exist".format(filename))
+
     try:
         makedirs(dirname(filename))
     except OSError:
@@ -42,4 +44,4 @@ def file_is_created(context, filename):
 @then("the \"{directory}\" directory isn't created")
 def directory_is_not_created(context, directory):
     # pylint: disable=unused-argument
-    assert not isdir(directory)
+    assert_false(isdir(directory), "'{0:s}' exist".format(directory))
