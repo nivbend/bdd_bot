@@ -37,7 +37,7 @@ class BaseDealerTest(object):
 
         # Assert actions during load().
         self.mocked_open.assert_called_once_with(FEATURE_BANK_FILENAME, "rb")
-        self.mocked_open().read.assert_called_once_with()
+        self.mocked_open.return_value.read.assert_called_once_with()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
 
@@ -116,7 +116,7 @@ class TestDealFirst(BaseDealerTest):
         assert not dealer.is_done
         assert_in("couldn't write", error_context.exception.message.lower())
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
-        self.mocked_open().write.assert_not_called()
+        self.mocked_open.return_value.write.assert_not_called()
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
     def test_cant_write_to_feature_file(self):
@@ -124,7 +124,7 @@ class TestDealFirst(BaseDealerTest):
         self._mock_dealer_functions(content = "\n".join(self.DEFAULT_CONTENTS))
         dealer = self._load_dealer()
 
-        self.mocked_open().write.side_effect = IOError()
+        self.mocked_open.return_value.write.side_effect = IOError()
         with assert_raises(BotError) as error_context:
             dealer.deal()
 
@@ -132,7 +132,7 @@ class TestDealFirst(BaseDealerTest):
         assert not dealer.is_done
         assert_in("couldn't write", error_context.exception.message.lower())
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
-        self.mocked_open().write.assert_called_once_with(ANY)
+        self.mocked_open.return_value.write.assert_called_once_with(ANY)
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
     def test_successful_write(self):
@@ -144,8 +144,8 @@ class TestDealFirst(BaseDealerTest):
 
         assert not dealer.is_done
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
-        self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[0] + "\n")
-        self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[1] + "\n")
+        self.mocked_open.return_value.write.assert_any_call(self.DEFAULT_CONTENTS[0] + "\n")
+        self.mocked_open.return_value.write.assert_any_call(self.DEFAULT_CONTENTS[1] + "\n")
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
     def test_empty_features_bank(self):
@@ -171,7 +171,7 @@ class TestDealFirst(BaseDealerTest):
         # If directory already exist, we should proceed as usual.
         assert dealer.is_done
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
-        self.mocked_open().write.assert_any_call(feature)
+        self.mocked_open.return_value.write.assert_any_call(feature)
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
     def test_features_directory_already_exists(self):
@@ -185,8 +185,8 @@ class TestDealFirst(BaseDealerTest):
         # If directory already exist, we should proceed as usual.
         assert not dealer.is_done
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
-        self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[0] + "\n")
-        self.mocked_open().write.assert_any_call(self.DEFAULT_CONTENTS[1] + "\n")
+        self.mocked_open.return_value.write.assert_any_call(self.DEFAULT_CONTENTS[0] + "\n")
+        self.mocked_open.return_value.write.assert_any_call(self.DEFAULT_CONTENTS[1] + "\n")
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
 class TestDealNext(BaseDealerTest):
@@ -223,7 +223,7 @@ class TestDealNext(BaseDealerTest):
         self._mock_dealer_functions(content = "\n".join(contents))
         dealer = self._deal_first()
 
-        self.mocked_popen().returncode = -1
+        self.mocked_popen.return_value.returncode = -1
         with assert_raises(BotError) as error_context:
             dealer.deal()
 
@@ -232,7 +232,7 @@ class TestDealNext(BaseDealerTest):
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call("behave", stdout = PIPE, stderr = PIPE)
-        self.mocked_popen().wait.assert_called_once_with()
+        self.mocked_popen.return_value.wait.assert_called_once_with()
 
     def test_should_deal_another(self):
         """When all scenarios pass, deal a new scenario."""
@@ -244,15 +244,15 @@ class TestDealNext(BaseDealerTest):
         self._mock_dealer_functions(content = "\n".join(contents))
         dealer = self._deal_first()
 
-        self.mocked_popen().returncode = 0
+        self.mocked_popen.return_value.returncode = 0
         dealer.deal()
 
         assert not dealer.is_done
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "ab")
-        self.mocked_open().write.assert_any_call("\n" + expected_scenario + "\n")
+        self.mocked_open.return_value.write.assert_any_call("\n" + expected_scenario + "\n")
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call("behave", stdout = PIPE, stderr = PIPE)
-        self.mocked_popen().wait.assert_called_once_with()
+        self.mocked_popen.return_value.wait.assert_called_once_with()
 
     def _deal_first(self):
         """Simulate dealing the first scenario and verify success."""
@@ -261,8 +261,8 @@ class TestDealNext(BaseDealerTest):
 
         # If directory already exist, we should proceed as usual.
         self.mocked_open.assert_any_call(OUTPUT_FEATURES_FILENAME, "wb")
-        self.mocked_open().write.assert_any_call(self.BASE_CONTENTS[0] + "\n")
-        self.mocked_open().write.assert_any_call(self.BASE_CONTENTS[1] + "\n")
+        self.mocked_open.return_value.write.assert_any_call(self.BASE_CONTENTS[0] + "\n")
+        self.mocked_open.return_value.write.assert_any_call(self.BASE_CONTENTS[1] + "\n")
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
         self.mocked_open.reset_mock()
