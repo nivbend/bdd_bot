@@ -103,3 +103,90 @@ Feature: Initialize Bot
                     When something happens
                     Then stuff will go down
             """
+
+    Scenario: Scenarios with multiline texts
+        Given the features bank:
+            """
+            Feature: A challenging feature
+                Scenario: The troublesome scenario
+                    Given some text
+                        \"\"\"
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+                        sed do eiusmod tempor incididunt ut labore et dolore magna
+                        aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                        ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                        Duis aute irure dolor in reprehenderit in voluptate velit
+                        esse cillum dolore eu fugiat nulla pariatur.
+                        \"\"\"
+                    When we print it in Arial
+                    Then graphic designers start twitching
+            """
+        When we first deal a scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: A challenging feature
+                Scenario: The troublesome scenario
+                    Given some text
+                        \"\"\"
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+                        sed do eiusmod tempor incididunt ut labore et dolore magna
+                        aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                        ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                        Duis aute irure dolor in reprehenderit in voluptate velit
+                        esse cillum dolore eu fugiat nulla pariatur.
+                        \"\"\"
+                    When we print it in Arial
+                    Then graphic designers start twitching
+            """
+
+    Scenario: Steps with data tables
+        Given the features bank:
+            """
+            Feature: Unable to even
+                Scenario: The MOST AWEFUL thing happened
+                    Given a group of girls
+                        | Name    | Role in gang      |
+                        | Jane    | Tag-a-long        |
+                        | Merry   | Wannabe           |
+                        | Christy | Drama queen       |
+                        | Sasha   | Like, who is she? |
+                    When you wouldn't BELIEVE what they did
+                    Then I can't even!
+            """
+        When we first deal a scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: Unable to even
+                Scenario: The MOST AWEFUL thing happened
+                    Given a group of girls
+                        | Name    | Role in gang      |
+                        | Jane    | Tag-a-long        |
+                        | Merry   | Wannabe           |
+                        | Christy | Drama queen       |
+                        | Sasha   | Like, who is she? |
+                    When you wouldn't BELIEVE what they did
+                    Then I can't even!
+            """
+
+    Scenario: A feature with tags
+        Given the features bank:
+            """
+            @bad @dont_implement_this_guys
+            Feature: Being a party-pooper
+                Scenario: People in the office are having fun
+                    Given people are telling jokes instead of working
+                    When we enter the room
+                    Then we'll "casually" mention there are pubs for that kind of thing
+                    And we'll stick around and glare until everyone are back to work
+            """
+        When we first deal a scenario
+        Then "features/all.feature" contains:
+            """
+            @bad @dont_implement_this_guys
+            Feature: Being a party-pooper
+                Scenario: People in the office are having fun
+                    Given people are telling jokes instead of working
+                    When we enter the room
+                    Then we'll "casually" mention there are pubs for that kind of thing
+                    And we'll stick around and glare until everyone are back to work
+            """
