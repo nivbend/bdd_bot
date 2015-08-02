@@ -1,8 +1,10 @@
+"""Setuptools setup script for the package."""
+
 from setuptools import setup
 
 setup(
     name = "bdd_bot",
-    version = "0.3",
+    version = "0.4",
     description = "An automatic BDD scenarios delivery system",
     url = "http://github.com/nivbend/bdd_bot",
     author = "Niv Ben-David",
