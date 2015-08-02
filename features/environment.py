@@ -5,6 +5,9 @@ from os import chdir
 from shutil import rmtree
 from subprocess import Popen
 from mock import patch, create_autospec
+from behave import use_step_matcher
+
+use_step_matcher("re")
 
 def before_scenario(context, scenario):
     # Setup a temporary directory for the scenario to run in.

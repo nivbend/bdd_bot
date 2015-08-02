@@ -7,7 +7,7 @@ from nose.tools import assert_true, assert_false, assert_is_none
 from bddbot.dealer import Dealer, FEATURE_BANK_FILENAME
 from bddbot.errors import BotError
 
-@given("the file \"{filename}\" doesn't exist")
+@given("the file \"(?P<filename>.+)\" doesn't exist")
 def a_repository_without_a_features_bank(context, filename):
     # pylint: disable=unused-argument
     assert not isfile(filename)
@@ -16,7 +16,7 @@ def a_repository_without_a_features_bank(context, filename):
 def a_features_bank(context):
     the_file_contains(context, FEATURE_BANK_FILENAME)
 
-@given("the file \"{filename}\" contains")
+@given("the file \"(?P<filename>.+)\" contains")
 def the_file_contains(context, filename):
     assert_false(isfile(filename), "'{:s}' already exist".format(filename))
 
@@ -29,7 +29,7 @@ def the_file_contains(context, filename):
     with open(filename, "wb") as output:
         output.write(context.text)
 
-@given("the directory \"{directory}\" exists")
+@given("the directory \"(?P<directory>.+)\" exists")
 def directory_exists(context, directory):
     # pylint: disable=unused-argument
     makedirs(directory)
@@ -44,12 +44,12 @@ def load_state(context):
     except BotError as error:
         context.error = error
 
-@then("the \"{filename}\" file is created")
+@then("the \"(?P<filename>.+)\" file is created")
 def file_is_created(context, filename):
     # pylint: disable=unused-argument
     assert_true(isfile(filename), "'{0:s}' wasn't created".format(filename))
 
-@then("the \"{directory}\" directory isn't created")
+@then("the \"(?P<directory>.+)\" directory isn't created")
 def directory_is_not_created(context, directory):
     # pylint: disable=unused-argument
     assert_false(isdir(directory), "'{0:s}' exist".format(directory))

@@ -5,12 +5,12 @@ from nose.tools import assert_equal, assert_is_not_none, assert_greater, assert_
 from bddbot.dealer import Dealer
 from bddbot.errors import BotError
 
-@given("we dealt {count:n} scenario/s")
+@given("we dealt (?P<count>[1-9][0-9]*) scenario/s")
 def we_dealt_n_scenarios(context, count):
     if not context.dealer:
         context.dealer = Dealer()
 
-    for _ in xrange(count):
+    for _ in xrange(int(count)):
         context.dealer.deal()
         context.dealt += 1
 
@@ -38,7 +38,7 @@ def we_deal_another_scenario(context):
     except BotError as error:
         context.error = error
 
-@then("\"{filename}\" contains")
+@then("\"(?P<filename>.+)\" contains")
 def file_contains(context, filename):
     with open(filename, "rb") as feature_file:
         features = feature_file.read()
