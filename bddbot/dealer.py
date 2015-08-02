@@ -1,21 +1,37 @@
+"""Deal scenarios from bank files.
+
+Dealing reads a new scenario every time from a bank file and appends it to the feature
+file, if all of the previous scenarios were properly implemented.
+"""
 from os.path import join
 from os import mkdir, getcwd
 from subprocess import Popen, PIPE
-from bank import split_bank
-from errors import BotError
+from .bank import split_bank
+from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
+from .errors import BotError
 
 FEATURE_BANK_FILENAME = "features.bank"
 FEATURES_DIRECTORY = "features"
 OUTPUT_FEATURES_FILENAME = join(FEATURES_DIRECTORY, "all.feature")
 
 class Dealer(object):
-    def __init__(self):
+    """Manage banks of features to dispense whenever a scenario is implemented.
+    """
+    def __init__(self, config = DEFAULT_CONFIG_FILENAME):
+        self.__config = BotConfiguration(config)
         self.__is_loaded = False
+        self.__is_done = False
         self.__header = ""
         self.__feature = ""
         self.__scenarios = []
 
+    @property
+    def is_done(self):
+        """Return True if no more scenarios are left to deal."""
+        return self.__is_done
+
     def load(self):
+        """Load a feature from the bank."""
         if self.__is_loaded:
             return
 
@@ -29,6 +45,11 @@ class Dealer(object):
         self.__is_loaded = True
 
     def deal(self):
+        """Deal a scenario from the bank.
+
+        If this is the first scenario, call _deal_first(). If not, as long as there
+        are more scenarios in the bank call _deal_another().
+        """
         deal_flags = (was_dealt for (was_dealt, _) in self.__scenarios)
 
         if not any(deal_flags):
@@ -37,21 +58,32 @@ class Dealer(object):
             if self._are_tests_passing():
                 self._deal_another()
             else:
-                print "Can't deal while there are unimplemented scenarios"
+                raise BotError("Can't deal while there are unimplemented scenarios")
         else:
-            self._done()
+            self.__is_done = True
 
     def _are_tests_passing(self):
-        process = Popen("behave", stdout = PIPE, stderr = PIPE)
-        process.wait()
+        """Verify that all scenarios were implemented using `behave`."""
+        for command in self.__config.test_commands:
+            process = Popen(command, stdout = PIPE, stderr = PIPE)
+            process.wait()
 
-        return (0 == process.returncode)
+            # pylint: disable=superfluous-parens
+            if (0 != process.returncode):
+                return False
+
+        return True
 
     def _deal_first(self):
+        """Deal the very first scenario in the bank.
+
+        This will create the feature file and fill it with the feature's text,
+        background, etc.
+        """
         self.load()
 
         if not self.__feature:
-            self._done()
+            self.__is_done = True
             return
 
         try:
@@ -65,15 +97,16 @@ class Dealer(object):
                 features.write(self.__header)
                 features.write(self.__feature)
                 if self.__scenarios:
-                    (was_dealt, scenario) = self.__scenarios[0]
+                    (_, scenario) = self.__scenarios[0]
                     features.write(scenario)
                     self.__scenarios[0] = (True, scenario)
                 else:
-                    self._done()
+                    self.__is_done = True
         except IOError:
             raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
 
     def _deal_another(self):
+        """Deal a new scenario (not the first one)."""
         try:
             with open(OUTPUT_FEATURES_FILENAME, "ab") as features:
                 for i in xrange(len(self.__scenarios)):
@@ -84,6 +117,3 @@ class Dealer(object):
                         break
         except IOError:
             raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
-
-    def _done(self):
-        print("No more scenarios to deal")
