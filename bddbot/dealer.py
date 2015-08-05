@@ -1,7 +1,11 @@
 """Deal scenarios from bank files.
 
 Dealing reads a new scenario every time from a bank file and appends it to the feature
-file, if all of the previous scenarios were properly implemented.
+file, as long as all previous scenarios were properly implemented.
+
+Features are written incrementaly from a bank file ("*.bank") to a corrosponding features
+file ("*.feature"). So for example, the bank file 'banks/awesome.bank' will be translated to the
+feature file 'features/awesome.feature'.
 """
 from os.path import dirname
 from os import mkdir, getcwd
@@ -11,8 +15,7 @@ from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
 from .errors import BotError
 
 class Dealer(object):
-    """Manage banks of features to dispense whenever a scenario is implemented.
-    """
+    """Manage banks of features to dispense whenever a scenario is implemented."""
     def __init__(self, config = DEFAULT_CONFIG_FILENAME):
         self.__config = BotConfiguration(config)
         self.__is_loaded = False
@@ -50,7 +53,11 @@ class Dealer(object):
         """Deal a scenario from the bank.
 
         If this is the first scenario, call _deal_first(). If not, as long as there
-        are more scenarios in the bank call _deal_another().
+        are more scenarios in the bank call _deal_another(). When there are no more scenarios,
+        the dealer is 'done'.
+
+        Attempting to deal while the test commands (by default, "behave") fail will raise a
+        BotError.
         """
         deal_flags = (was_dealt for (was_dealt, _) in self.__scenarios)
 
@@ -65,7 +72,11 @@ class Dealer(object):
             self.__is_done = True
 
     def _are_tests_passing(self):
-        """Verify that all scenarios were implemented using `behave`."""
+        """Verify that all scenarios were implemented using `behave`.
+
+        This is done by calling each testing command (by default, only "behave") in order.
+        If any of them fail, the result is False.
+        """
         for command in self.__config.test_commands:
             process = Popen(command, stdout = PIPE, stderr = PIPE)
             process.wait()
@@ -80,7 +91,7 @@ class Dealer(object):
         """Deal the very first scenario in the bank.
 
         This will create the feature file and fill it with the feature's text,
-        background, etc.
+        background, etc. It implicitly calls load().
         """
         self.load()
 

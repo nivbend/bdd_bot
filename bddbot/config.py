@@ -29,7 +29,11 @@ class BotConfiguration(object):
 
     @property
     def test_commands(self):
-        """Generate the commands to run BDD tests with."""
+        """Generate the commands to run BDD tests with.
+
+        Test commands are generated as a list of command and arguments, the kind the subprocess
+        module can later take (for example, `["behave", "--no-multiline", "--format=progress", ]`).
+        """
         commands = self.__parameters.get("test_command", DEFAULT_TEST_COMMAND)
 
         if not commands:
