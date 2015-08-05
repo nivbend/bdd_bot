@@ -3,11 +3,11 @@
 import yaml
 
 DEFAULT_CONFIG_FILENAME = ".bddbotrc"
+DEFAULT_BANK_PATH = "banks/all.bank"
 DEFAULT_TEST_COMMAND = "behave"
 
 class BotConfiguration(object):
     """Load configuration from file or return default values."""
-    # pylint: disable=too-few-public-methods
     def __init__(self, filename = None):
         if not filename:
             filename = DEFAULT_CONFIG_FILENAME
@@ -21,6 +21,11 @@ class BotConfiguration(object):
 
         if not self.__parameters:
             self.__parameters = {}
+
+    @property
+    def bank(self):
+        """Return the features bank's path."""
+        return self.__parameters.get("bank", DEFAULT_BANK_PATH)
 
     @property
     def test_commands(self):

@@ -3,16 +3,12 @@
 Dealing reads a new scenario every time from a bank file and appends it to the feature
 file, if all of the previous scenarios were properly implemented.
 """
-from os.path import join
+from os.path import dirname
 from os import mkdir, getcwd
 from subprocess import Popen, PIPE
 from .bank import split_bank
 from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
 from .errors import BotError
-
-FEATURE_BANK_FILENAME = "features.bank"
-FEATURES_DIRECTORY = "features"
-OUTPUT_FEATURES_FILENAME = join(FEATURES_DIRECTORY, "all.feature")
 
 class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented.
@@ -21,6 +17,7 @@ class Dealer(object):
         self.__config = BotConfiguration(config)
         self.__is_loaded = False
         self.__is_done = False
+        self.__output_path = ""
         self.__header = ""
         self.__feature = ""
         self.__scenarios = []
@@ -36,11 +33,16 @@ class Dealer(object):
             return
 
         try:
-            with open(FEATURE_BANK_FILENAME, "rb") as bank_input:
+            with open(self.__config.bank, "rb") as bank_input:
                 (self.__header, self.__feature, scenarios) = split_bank(bank_input.read())
         except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
 
+        output_path = self.__config.bank.replace("bank", "feature")
+        if not output_path.endswith(".feature"):
+            output_path += ".feature"
+
+        self.__output_path = output_path
         self.__scenarios = [(False, scenario) for scenario in scenarios]
         self.__is_loaded = True
 
@@ -87,13 +89,13 @@ class Dealer(object):
             return
 
         try:
-            mkdir(FEATURES_DIRECTORY)
+            mkdir(dirname(self.__output_path))
         except OSError:
             # Directory exists.
             pass
 
         try:
-            with open(OUTPUT_FEATURES_FILENAME, "wb") as features:
+            with open(self.__output_path, "wb") as features:
                 features.write(self.__header)
                 features.write(self.__feature)
                 if self.__scenarios:
@@ -103,12 +105,12 @@ class Dealer(object):
                 else:
                     self.__is_done = True
         except IOError:
-            raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
+            raise BotError("Couldn't write to '{:s}'".format(self.__output_path))
 
     def _deal_another(self):
         """Deal a new scenario (not the first one)."""
         try:
-            with open(OUTPUT_FEATURES_FILENAME, "ab") as features:
+            with open(self.__output_path, "ab") as features:
                 for i in xrange(len(self.__scenarios)):
                     (was_dealt, scenario) = self.__scenarios[i]
                     if not was_dealt:
@@ -116,4 +118,4 @@ class Dealer(object):
                         self.__scenarios[i] = (True, scenario)
                         break
         except IOError:
-            raise BotError("Couldn't write to '{:s}'".format(OUTPUT_FEATURES_FILENAME))
+            raise BotError("Couldn't write to '{:s}'".format(self.__output_path))

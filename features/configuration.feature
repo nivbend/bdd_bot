@@ -33,6 +33,23 @@ Feature: Configure parameters
                 Scenario: Donating clothes to charity
             """
 
+    Scenario: Setting a features bank file
+        Given the file ".bddbotrc" contains:
+            """
+            bank: banks/goodness.bank
+            """
+        And the features bank "banks/goodness.bank":
+            """
+            Feature: Doing great deeds #2
+                Scenario: Helping an old lady cross the street
+            """
+        When we first deal a scenario
+        Then "features/goodness.feature" contains:
+            """
+            Feature: Doing great deeds #2
+                Scenario: Helping an old lady cross the street
+            """
+
     Scenario: Setting the test command
         Given the file ".bddbotrc" contains:
             """
@@ -40,7 +57,7 @@ Feature: Configure parameters
             """
         And the features bank:
             """
-            Feature: Doing great deeds #2
+            Feature: Doing great deeds #3
                 Scenario: Feeding the homeless
                 Scenario: Helping children in Africa
             """
@@ -50,7 +67,7 @@ Feature: Configure parameters
         Then the command "behave --format=null" is executed
         And "features/all.feature" contains:
             """
-            Feature: Doing great deeds #2
+            Feature: Doing great deeds #3
                 Scenario: Feeding the homeless
                 Scenario: Helping children in Africa
             """
