@@ -51,9 +51,9 @@ def load_state(context):
 @then("the \"(?P<filename>.+)\" file is created")
 def file_is_created(context, filename):
     # pylint: disable=unused-argument
-    assert_true(isfile(filename), "'{0:s}' wasn't created".format(filename))
+    assert_true(isfile(filename), "'{:s}' wasn't created".format(filename))
 
 @then("the \"(?P<directory>.+)\" directory isn't created")
 def directory_is_not_created(context, directory):
     # pylint: disable=unused-argument
-    assert_false(isdir(directory), "'{0:s}' exist".format(directory))
+    assert_false(isdir(directory), "'{:s}' exist".format(directory))
