@@ -71,3 +71,28 @@ Feature: Configure parameters
                 Scenario: Feeding the homeless
                 Scenario: Helping children in Africa
             """
+
+    Scenario: Setting multiple test commands
+        Given the file ".bddbotrc" contains:
+            """
+            test_command:
+                - behave --format=null
+                - echo YAY
+            """
+        And the features bank:
+            """
+            Feature: Doing great deeds #3
+                Scenario: Feeding the homeless
+                Scenario: Helping children in Africa
+            """
+        And the directory "features/steps" exists
+        And we dealt 1 scenario/s
+        When we deal another scenario
+        Then the command "behave --format=null" is executed
+        And the command "echo YAY" is executed
+        And "features/all.feature" contains:
+            """
+            Feature: Doing great deeds #3
+                Scenario: Feeding the homeless
+                Scenario: Helping children in Africa
+            """
