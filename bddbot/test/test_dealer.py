@@ -89,6 +89,78 @@ class BaseDealerTest(object):
             [call(chunk) for chunk in chunks],
             self.mocked_open.return_value.write.mock_calls)
 
+class TestConfiguration(BaseDealerTest):
+    """Test tweaking behavior with the configuration file.
+
+    Most use-cases are already covered by the BotConfiguration's unit-tests, these tests
+    are designed to make sure the dealer object uses its configuration properly.
+    """
+    FEATURE = "Feature: Taking out the garbage"
+    SCENARIO_A = "  Scenario: The trash is empty"
+    SCENARIO_B = "  Scenario: The bag is torn"
+    BANK_FILE_PATHS = [
+        ("empty-trash.bank",                "empty-trash.feature"),
+        ("banks/empty-trash.bank",          "features/empty-trash.feature"),
+        ("without-extension",               "without-extension.feature"),
+        ("banks/without-extension",         "features/without-extension.feature"),
+        ("/path/to/empty-trash.bank",       "/path/to/empty-trash.feature"),
+        ("/path/to/banks/empty-trash.bank", "/path/to/features/empty-trash.feature"),
+    ]
+
+    def teardown(self):
+        # pylint: disable=no-self-use
+        patch.stopall()
+
+    def test_setting_costum_file(self):
+        """Setting a custom configuration file path."""
+        path = "/path/to/bddbotrc"
+        self._mock_dealer_functions()
+
+        # pylint: disable=unused-variable
+        dealer = Dealer(config = path)
+
+        self.mocked_open.assert_not_called()
+        self.mocked_popen.assert_not_called()
+        self.mocked_config.assert_called_once_with(path)
+
+    def test_setting_bank_file_path(self):
+        """Set the path to the bank as a single file."""
+        for (bank_path, expected_feature_path) in self.BANK_FILE_PATHS:
+            yield self._check_setting_bank_file_path, bank_path, expected_feature_path
+
+    def _check_setting_bank_file_path(self, bank_path, expected_feature_path):
+        # pylint: disable=missing-docstring
+        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
+        dealer = self._load_dealer(bank_path = bank_path)
+
+        self.mocked_config.return_value.bank = bank_path
+        dealer.deal()
+
+        self.mocked_open.assert_any_call(expected_feature_path, "wb")
+        self._assert_writes(["", self.FEATURE + "\n", self.SCENARIO_A, ])
+        self.mocked_mkdir.assert_called_once_with(dirname(expected_feature_path))
+        self.mocked_popen.assert_not_called()
+        self.mocked_config.assert_not_called()
+
+    def test_setting_test_command(self):
+        """Using custom test commands to verify scenarios."""
+        test_command_1 = ["some_test", ]
+        test_command_2 = ["another_test", "--awesome", ]
+
+        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, self.SCENARIO_B, ]))
+        dealer = self._deal_first(self.FEATURE, self.SCENARIO_A + "\n")
+
+        self.mocked_popen.return_value.returncode = 0
+        self.mocked_config.return_value.test_commands = [test_command_1, test_command_2, ]
+        dealer.deal()
+
+        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "ab")
+        self._assert_writes([self.SCENARIO_B, ])
+        self.mocked_mkdir.assert_not_called()
+        self.mocked_popen.assert_any_call(test_command_1, stdout = ANY, stderr = ANY)
+        self.mocked_popen.assert_any_call(test_command_2, stdout = ANY, stderr = ANY)
+        self.mocked_config.assert_not_called()
+
 class TestLoading(BaseDealerTest):
     """Test various situations when calling load()."""
     CONTENTS = "Feature: Some awesome stuff"
@@ -298,75 +370,3 @@ class TestDealNext(BaseDealerTest):
         self._assert_writes([expected_scenario + "\n", ])
         self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
         self.mocked_popen.return_value.wait.assert_called_once_with()
-
-class TestConfiguration(BaseDealerTest):
-    """Test tweaking behavior with the configuration file.
-
-    Most use-cases are already covered by the BotConfiguration's unit-tests, these tests
-    are designed to make sure the dealer object uses its configuration properly.
-    """
-    FEATURE = "Feature: Taking out the garbage"
-    SCENARIO_A = "  Scenario: The trash is empty"
-    SCENARIO_B = "  Scenario: The bag is torn"
-    BANK_FILE_PATHS = [
-        ("empty-trash.bank",                "empty-trash.feature"),
-        ("banks/empty-trash.bank",          "features/empty-trash.feature"),
-        ("without-extension",               "without-extension.feature"),
-        ("banks/without-extension",         "features/without-extension.feature"),
-        ("/path/to/empty-trash.bank",       "/path/to/empty-trash.feature"),
-        ("/path/to/banks/empty-trash.bank", "/path/to/features/empty-trash.feature"),
-    ]
-
-    def teardown(self):
-        # pylint: disable=no-self-use
-        patch.stopall()
-
-    def test_setting_costum_file(self):
-        """Setting a custom configuration file path."""
-        path = "/path/to/bddbotrc"
-        self._mock_dealer_functions()
-
-        # pylint: disable=unused-variable
-        dealer = Dealer(config = path)
-
-        self.mocked_open.assert_not_called()
-        self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_called_once_with(path)
-
-    def test_setting_bank_file_path(self):
-        """Set the path to the bank as a single file."""
-        for (bank_path, expected_feature_path) in self.BANK_FILE_PATHS:
-            yield self._check_setting_bank_file_path, bank_path, expected_feature_path
-
-    def _check_setting_bank_file_path(self, bank_path, expected_feature_path):
-        # pylint: disable=missing-docstring
-        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
-        dealer = self._load_dealer(bank_path = bank_path)
-
-        self.mocked_config.return_value.bank = bank_path
-        dealer.deal()
-
-        self.mocked_open.assert_any_call(expected_feature_path, "wb")
-        self._assert_writes(["", self.FEATURE + "\n", self.SCENARIO_A, ])
-        self.mocked_mkdir.assert_called_once_with(dirname(expected_feature_path))
-        self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_not_called()
-
-    def test_setting_test_command(self):
-        """Using custom test commands to verify scenarios."""
-        test_command_1 = ["some_test", ]
-        test_command_2 = ["another_test", "--awesome", ]
-
-        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, self.SCENARIO_B, ]))
-        dealer = self._deal_first(self.FEATURE, self.SCENARIO_A + "\n")
-
-        self.mocked_popen.return_value.returncode = 0
-        self.mocked_config.return_value.test_commands = [test_command_1, test_command_2, ]
-        dealer.deal()
-
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "ab")
-        self._assert_writes([self.SCENARIO_B, ])
-        self.mocked_mkdir.assert_not_called()
-        self.mocked_popen.assert_any_call(test_command_1, stdout = ANY, stderr = ANY)
-        self.mocked_popen.assert_any_call(test_command_2, stdout = ANY, stderr = ANY)
-        self.mocked_config.assert_not_called()
