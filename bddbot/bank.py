@@ -3,7 +3,7 @@
 import re
 
 REGEX_FEATURE_START = re.compile(r"^\s*Feature:", re.MULTILINE)
-REGEX_SCENARIO_START = re.compile(r"^\s*Scenario:", re.MULTILINE)
+REGEX_SCENARIO_START = re.compile(r"^\s*Scenario(?: Outline)?:", re.MULTILINE)
 
 class Bank(object):
     """Holds a bank file's parsed contents and allows access to its scenarios in order."""

@@ -100,6 +100,42 @@ Feature: Initialize Bot
                     Then stuff will go down
             """
 
+    Scenario: Scenario outline
+        Given the features bank:
+            """
+            Feature: A feature with a scenario outline
+                Scenario Outline: A general test case
+                    Given someone named <name>
+                    When they <something>
+                    Then they'll become <superhero>
+
+                    Examples:
+                    | name  | something              | superhero       |
+                    | Peter | are bitten by a spider | Spider-Man      |
+                    | Steve | enter a test program   | Captain America |
+                    | Bruce | get hit by gamma rays  | The Hulk        |
+
+                Scenario: This here to make sure we get the right part
+                    Given the scenario outline above
+                    When we only deal up till that scenario
+                    Then this scenario isn't written to the feature file
+            """
+        When we first deal a scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: A feature with a scenario outline
+                Scenario Outline: A general test case
+                    Given someone named <name>
+                    When they <something>
+                    Then they'll become <superhero>
+
+                    Examples:
+                    | name  | something              | superhero       |
+                    | Peter | are bitten by a spider | Spider-Man      |
+                    | Steve | enter a test program   | Captain America |
+                    | Bruce | get hit by gamma rays  | The Hulk        |
+            """
+
     Scenario: Scenarios with multiline texts
         Given the features bank:
             """
