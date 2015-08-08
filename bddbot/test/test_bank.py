@@ -1,7 +1,8 @@
 """Test the bank module."""
 
-from nose.tools import assert_equal, assert_multi_line_equal
-from bddbot.bank import Bank
+from nose.tools import assert_equal, assert_multi_line_equal, assert_raises, assert_in
+from bddbot.bank import Bank, BankParser
+from bddbot.errors import BotError
 
 def test_without_header():
     """Test splitting feature files without headers."""
@@ -10,24 +11,27 @@ def test_without_header():
 
 def test_with_header():
     """Test splitting feature files with headers."""
-    header_text = "Some header text.\n"
+    header_text = "Some header text."
     for (contents, feature, scenarios) in TEST_CASES:
         yield (_check_split_bank,
-               (header_text, feature, scenarios),
+               (header_text + "\n", feature, scenarios),
                "\n".join([header_text, contents, ]))
 
-def _strip_whitespace(text):
-    """Rebuild multi-line string without leading/trailing spaces or empty lines."""
-    return "\n".join(
-        " ".join(line.strip().split())  # Strip leading/trailing whitespace and multiple spaces.
-        for line in text.splitlines()
-        if line.strip())                # Ignore empty lines.
+def test_multiline_text_error():
+    """If a multiline text is started but not finished, raise a parser error."""
+    contents = "\n".join([
+        "Feature: A multiline text error",
+        "    Scenario: A bad scenario",
+        "        Given a multiline text that isn't closed:",
+        "            \"\"\"",
+        "            This multiline text has no end!",
+    ])
 
-def _assert_equal_without_spaces(expected, actual):
-    """Assert two strings are equal, ignoring whitespace."""
-    assert_multi_line_equal(
-        _strip_whitespace(expected),
-        _strip_whitespace(actual))
+    parser = BankParser()
+    with assert_raises(BotError) as error_context:
+        parser.parse(contents)
+
+    assert_in("multiline", error_context.exception.message.lower())
 
 def _check_split_bank(expected, text):
     """Compare two bank splits by their structure."""
@@ -35,16 +39,16 @@ def _check_split_bank(expected, text):
     bank = Bank(text)
 
     # Verify header.
-    _assert_equal_without_spaces(expected_header, bank.header)
+    assert_multi_line_equal(expected_header, bank.header)
 
     # Verify feature's text.
-    _assert_equal_without_spaces(expected_feature, bank.feature)
+    assert_multi_line_equal(expected_feature, bank.feature)
 
     # Verify each scenario.
     scenario = bank.get_next_scenario()
     count = 0
     while scenario:
-        _assert_equal_without_spaces(scenario, expected_scenarios[count])
+        assert_multi_line_equal(scenario, expected_scenarios[count])
 
         scenario = bank.get_next_scenario()
         count += 1
@@ -52,37 +56,155 @@ def _check_split_bank(expected, text):
     # Make sure we don't miss any expected scenarios in feature.
     assert_equal(count, len(expected_scenarios))
 
+# pylint: disable=bad-continuation
 TEST_CASES = [
     # Empty file.
     ("", "", []),
 
-    # One feature with no scenarios.
+    # A feature with no scenarios.
     ("Feature: Empty feature", "Feature: Empty feature", []),
 
-    # One feature, one full scenario.
-    # Other tests will have single line scenarios for readability.
-    ("""Feature: A simple feature
-          Scenario: A single scenario
-            Given the past
-            When stuff happen
-            Then the future will come to be""",
-     "Feature: A simple feature",
-     ["""Scenario: A single scenario
-           Given the past
-           When stuff happen
-           Then the future will come to be""",
+    # A feature with a single scenario.
+    ("\n".join([
+         "Feature: A simple feature",
+         "    This is the feature's description.",
+         "    It can go on for several lines.",
+         "",
+         "    Scenario: A single scenario",
+         "        Given the past",
+         "        When stuff happen",
+         "        Then the future will come to be",
+     ]),
+     "\n".join([
+         "Feature: A simple feature",
+         "    This is the feature's description.",
+         "    It can go on for several lines.",
+         "\n",
+     ]),
+     ["\n".join([
+          "    Scenario: A single scenario",
+          "        Given the past",
+          "        When stuff happen",
+          "        Then the future will come to be",
+      ]),
      ],
     ),
 
-    # One feature, three scenarios.
-    ("""Feature: A simple feature
-          Scenario: First scenario
-          Scenario: Second scenario
-          Scenario: Third scenario""",
-     "Feature: A simple feature",
-     ["Scenario: First scenario",
-      "Scenario: Second scenario",
-      "Scenario: Third scenario",
+    # A feature with three scenarios.
+    ("\n".join([
+         "Feature: A slightly bigger feature",
+         "    Scenario: The first scenario",
+         "    Scenario: The second scenario",
+         "    Scenario: The third scenario",
+     ]),
+     "Feature: A slightly bigger feature\n",
+     ["    Scenario: The first scenario\n",
+      "    Scenario: The second scenario\n",
+      "    Scenario: The third scenario",
+     ],
+    ),
+
+    # A very complex example, with a background and scenario outlines.
+    ("\n".join([
+         "Feature: A very complex feature indeed",
+         "    If we can parse this baby, we can probably parse anything.",
+         "",
+         "    Background:",
+         "        Given the long, forgotten past",
+         "        And some stuff best not remembered",
+         "",
+         "    Scenario: The very first scenario",
+         "        Given we have a few scenarios",
+         "        When we split the feature file",
+         "        But don't check it properly",
+         "        Then we may get a false-positive",
+         "        And we suck as testers",
+         "",
+         "    Scenario Outline: Some cases",
+         "        Given <value>",
+         "        When <action>",
+         "        Then <result>",
+         "        | value | action | result |",
+         "        | A1    | B1     | C1     |",
+         "        | A2    | B2     | C2     |",
+         "        | A3    | B3     | C3     |",
+         "",
+         "    Scenario: Another scenario",
+         "        Given some multiline text:",
+         "            \"\"\"",
+         "            This is some cool text.",
+         "            But wait, there's more!",
+         "            \"\"\"",
+         "        And even a data table",
+         "            | a | b |",
+         "            | 1 | 2 |",
+         "            | 3 | 4 |",
+         "        When we try to challenge our parser",
+         "        Then it won't fail us",
+         "",
+         "    Scenario: The last scenario",
+         "        Given more text:",
+         "            '''",
+         "            Feature: A fake feature",
+         "                Scenario: this is a fake scenario",
+         "            '''",
+         "        When we try to challenge our parser",
+         "        Then it won't fail us",
+     ]),
+     "\n".join([
+         "Feature: A very complex feature indeed",
+         "    If we can parse this baby, we can probably parse anything.",
+         "",
+         "    Background:",
+         "        Given the long, forgotten past",
+         "        And some stuff best not remembered",
+         "\n",
+     ]),
+     ["\n".join([
+          "    Scenario: The very first scenario",
+          "        Given we have a few scenarios",
+          "        When we split the feature file",
+          "        But don't check it properly",
+          "        Then we may get a false-positive",
+          "        And we suck as testers",
+          "\n",
+      ]),
+      "\n".join([
+          "    Scenario Outline: Some cases",
+          "        Given <value>",
+          "        When <action>",
+          "        Then <result>",
+          "        | value | action | result |",
+          "        | A1    | B1     | C1     |",
+          "        | A2    | B2     | C2     |",
+          "        | A3    | B3     | C3     |",
+          "\n",
+      ]),
+      "\n".join([
+          "    Scenario: Another scenario",
+          "        Given some multiline text:",
+          "            \"\"\"",
+          "            This is some cool text.",
+          "            But wait, there's more!",
+          "            \"\"\"",
+          "        And even a data table",
+          "            | a | b |",
+          "            | 1 | 2 |",
+          "            | 3 | 4 |",
+          "        When we try to challenge our parser",
+          "        Then it won't fail us",
+          "\n",
+      ]),
+      "\n".join([
+          "    Scenario: The last scenario",
+          "        Given more text:",
+          "            '''",
+          "            Feature: A fake feature",
+          "                Scenario: this is a fake scenario",
+          "            '''",
+          "        When we try to challenge our parser",
+          "        Then it won't fail us",
+      ]),
      ],
     ),
 ]
