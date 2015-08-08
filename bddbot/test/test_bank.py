@@ -1,8 +1,7 @@
 """Test the bank module."""
 
 from nose.tools import assert_equal, assert_multi_line_equal, assert_raises, assert_in
-from bddbot.bank import Bank, BankParser
-from bddbot.errors import BotError
+from bddbot.bank import Bank, BankParser, ParsingError
 
 def test_without_header():
     """Test splitting feature files without headers."""
@@ -28,10 +27,11 @@ def test_multiline_text_error():
     ])
 
     parser = BankParser()
-    with assert_raises(BotError) as error_context:
+    with assert_raises(ParsingError) as error_context:
         parser.parse(contents)
 
     assert_in("multiline", error_context.exception.message.lower())
+    assert_equal(4, error_context.exception.line)
 
 def test_dangling_feature_tags():
     """Raise exception if there are any tags without a feature definition."""
@@ -40,10 +40,11 @@ def test_dangling_feature_tags():
     ])
 
     parser = BankParser()
-    with assert_raises(BotError) as error_context:
+    with assert_raises(ParsingError) as error_context:
         parser.parse(contents)
 
     assert_in("dangling tags", error_context.exception.message.lower())
+    assert_equal(1, error_context.exception.line)
 
 def test_dangling_scenario_tags():
     """Raise exception if there are any dangling tags."""
@@ -56,10 +57,11 @@ def test_dangling_scenario_tags():
     ])
 
     parser = BankParser()
-    with assert_raises(BotError) as error_context:
+    with assert_raises(ParsingError) as error_context:
         parser.parse(contents)
 
     assert_in("dangling tags", error_context.exception.message.lower())
+    assert_equal(5, error_context.exception.line)
 
 def _check_split_bank(expected, text):
     """Compare two bank splits by their structure."""

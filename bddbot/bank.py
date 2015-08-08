@@ -8,8 +8,15 @@ REGEX_TAGS = re.compile(r"^\s*(?:@\w+(?:\s+@\w+)*)")
 REGEX_SCENARIO_START = re.compile(r"^\s*Scenario(?: Outline)?:")
 REGEX_MULTILINE_START = re.compile(r"^\s*(?:\"\"\"|''')")
 
+class ParsingError(BotError):
+    # pylint: disable=missing-docstring
+    def __init__(self, message, line):
+        super(ParsingError, self).__init__(message)
+        self.line = line
+
 class BankParser(object):
     # pylint: disable=too-few-public-methods
+    # pylint: disable=too-many-instance-attributes
     """A simple feature parser.
 
     Since we only really need to know mostly when the feature/scenarios start we don't really
@@ -31,6 +38,8 @@ class BankParser(object):
         self.scenarios = []
 
         self.__state = self.STATE_HEADER
+        self.__line = 1
+        self.__multiline_start = 0
         self.__multiline_delimiter = None
         self.__tags = []
         self.__callbacks = {
@@ -49,14 +58,18 @@ class BankParser(object):
 
     def parse(self, contents):
         """Parse the contents of a bank file."""
-        for line in contents.splitlines():
+        contents = contents.splitlines()
+
+        self.__line = 0
+        for line in contents:
+            self.__line += 1
             self.__parse_line(line)
 
         if self.STATE_MULTILINE == self.__state:
-            raise BotError("Multiline text has no end")
+            raise ParsingError("Multiline text has no end", self.__multiline_start)
 
         if self.__state in (self.STATE_FEATURE_TAGS, self.STATE_SCENARIO_TAGS, ):
-            raise BotError("Dangling tags")
+            raise ParsingError("Dangling tags", self.__line)
 
         self.__normalize()
 
@@ -130,6 +143,7 @@ class BankParser(object):
 
         if REGEX_MULTILINE_START.match(line):
             self.__state = self.STATE_MULTILINE
+            self.__multiline_start = self.__line
             self.__multiline_delimiter = line.lstrip()[:3]
 
         self.scenarios[-1].append(line)
@@ -138,6 +152,7 @@ class BankParser(object):
         """Until the end of the multiline text, add the line to the current scenario."""
         if line.lstrip().startswith(self.__multiline_delimiter):
             self.__state = self.STATE_SCENARIO
+            self.__multiline_start = 0
             self.__multiline_delimiter = None
 
         self.scenarios[-1].append(line)
