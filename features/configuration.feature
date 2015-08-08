@@ -50,6 +50,37 @@ Feature: Configure parameters
                 Scenario: Helping an old lady cross the street
             """
 
+    Scenario: Setting multiple features bank files
+        Given the file ".bddbotrc" contains:
+            """
+            bank:
+                - banks/goodness-1.bank
+                - banks/goodness-2.bank
+            """
+        And the features bank "banks/goodness-1.bank":
+            """
+            Feature: Volunteering
+                Scenario: Helping in a soup kitchen
+            """
+        And the features bank "banks/goodness-2.bank":
+            """
+            Feature: Donations
+                Scenario: Giving money to the poor
+                Scenario: Organizing a neighberhood fund-raiser
+            """
+        And we dealt 1 scenario/s
+        When we deal another scenario
+        Then "features/goodness-1.feature" contains:
+            """
+            Feature: Volunteering
+                Scenario: Helping in a soup kitchen
+            """
+        Then "features/goodness-2.feature" contains:
+            """
+            Feature: Donations
+                Scenario: Giving money to the poor
+            """
+
     Scenario: Setting the test command
         Given the file ".bddbotrc" contains:
             """

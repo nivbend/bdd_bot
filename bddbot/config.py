@@ -25,7 +25,16 @@ class BotConfiguration(object):
     @property
     def bank(self):
         """Return the features bank's path."""
-        return self.__parameters.get("bank", DEFAULT_BANK_PATH)
+        value = self.__parameters.get("bank", DEFAULT_BANK_PATH)
+
+        if not value:
+            value = DEFAULT_BANK_PATH
+
+        if isinstance(value, str):
+            yield value
+        else:
+            for path in value:
+                yield path
 
     @property
     def test_commands(self):

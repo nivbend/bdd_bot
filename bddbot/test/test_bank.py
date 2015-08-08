@@ -1,8 +1,7 @@
 """Test the bank module."""
 
-import itertools
 from nose.tools import assert_equal, assert_multi_line_equal
-from bddbot.dealer import split_bank
+from bddbot.bank import Bank
 
 def test_without_header():
     """Test splitting feature files without headers."""
@@ -33,20 +32,25 @@ def _assert_equal_without_spaces(expected, actual):
 def _check_split_bank(expected, text):
     """Compare two bank splits by their structure."""
     (expected_header, expected_feature, expected_scenarios) = expected
-    (actual_header, actual_feature, actual_scenarios) = split_bank(text)
+    bank = Bank(text)
 
     # Verify header.
-    _assert_equal_without_spaces(expected_header, actual_header)
+    _assert_equal_without_spaces(expected_header, bank.header)
 
     # Verify feature's text.
-    _assert_equal_without_spaces(expected_feature, actual_feature)
+    _assert_equal_without_spaces(expected_feature, bank.feature)
+
+    # Verify each scenario.
+    scenario = bank.get_next_scenario()
+    count = 0
+    while scenario:
+        _assert_equal_without_spaces(scenario, expected_scenarios[count])
+
+        scenario = bank.get_next_scenario()
+        count += 1
 
     # Make sure we don't miss any expected scenarios in feature.
-    assert_equal(len(actual_scenarios), len(expected_scenarios))
-    itertools.imap(
-        _assert_equal_without_spaces,
-        expected_scenarios,
-        actual_scenarios)
+    assert_equal(count, len(expected_scenarios))
 
 TEST_CASES = [
     # Empty file.

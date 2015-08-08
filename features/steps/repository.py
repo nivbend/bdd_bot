@@ -3,7 +3,7 @@
 from behave import given, when, then
 from os import makedirs
 from os.path import isdir, isfile, dirname
-from nose.tools import assert_true, assert_false, assert_is_none
+from nose.tools import assert_false, assert_is_none
 from bddbot.dealer import Dealer
 from bddbot.config import DEFAULT_BANK_PATH
 from bddbot.errors import BotError
@@ -48,10 +48,10 @@ def load_state(context):
     except BotError as error:
         context.error = error
 
-@then("the \"(?P<filename>.+)\" file is created")
+@then("the \"(?P<filename>.+)\" file isn't created")
 def file_is_created(context, filename):
     # pylint: disable=unused-argument
-    assert_true(isfile(filename), "'{:s}' wasn't created".format(filename))
+    assert_false(isfile(filename), "'{:s}' exist".format(filename))
 
 @then("the \"(?P<directory>.+)\" directory isn't created")
 def directory_is_not_created(context, directory):

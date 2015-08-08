@@ -38,19 +38,20 @@ class BaseDealerTest(object):
 
         return patcher
 
-    def _load_dealer(self, bank_path = None):
+    def _load_dealer(self, bank_paths = None):
         """Simulate a call to load() and verify success."""
-        if not bank_path:
-            bank_path = DEFAULT_BANK_PATH
+        if not bank_paths:
+            bank_paths = [DEFAULT_BANK_PATH, ]
 
-        self.mocked_config.return_value.bank = bank_path
+        self.mocked_config.return_value.bank = bank_paths
 
         dealer = Dealer()
         dealer.load()
 
         # Assert actions during load().
-        self.mocked_open.assert_called_once_with(bank_path, "rb")
-        self.mocked_open.return_value.read.assert_called_once_with()
+        for path in bank_paths:
+            self.mocked_open.assert_any_call(path, "rb")
+        assert_equal(len(bank_paths), self.mocked_open.return_value.read.call_count)
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
@@ -131,9 +132,8 @@ class TestConfiguration(BaseDealerTest):
     def _check_setting_bank_file_path(self, bank_path, expected_feature_path):
         # pylint: disable=missing-docstring
         self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
-        dealer = self._load_dealer(bank_path = bank_path)
+        dealer = self._load_dealer(bank_paths = [bank_path, ])
 
-        self.mocked_config.return_value.bank = bank_path
         dealer.deal()
 
         self.mocked_open.assert_any_call(expected_feature_path, "wb")
@@ -141,6 +141,13 @@ class TestConfiguration(BaseDealerTest):
         self.mocked_mkdir.assert_called_once_with(dirname(expected_feature_path))
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_not_called()
+
+    def test_setting_multiple_bank_file_paths(self):
+        """Setting multiple bank file paths will read from all of them."""
+        bank_path_1 = "/path/to/first.bank"
+        bank_path_2 = "/path/to/second.bank"
+        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
+        self._load_dealer(bank_paths = [bank_path_1, bank_path_2, ])
 
     def test_setting_test_command(self):
         """Using custom test commands to verify scenarios."""
@@ -163,11 +170,14 @@ class TestConfiguration(BaseDealerTest):
 
 class TestLoading(BaseDealerTest):
     """Test various situations when calling load()."""
-    CONTENTS = "Feature: Some awesome stuff"
+    CONTENTS = "\n".join([
+        "Feature: Some awesome stuff",
+        "  Scenario: Doing cool things",
+    ])
 
     def setup(self):
         self._mock_dealer_functions(self.CONTENTS)
-        self.mocked_config.return_value.bank = DEFAULT_BANK_PATH
+        self.mocked_config.return_value.bank = [DEFAULT_BANK_PATH, ]
 
     def teardown(self):
         patch.stopall()
@@ -184,7 +194,7 @@ class TestLoading(BaseDealerTest):
         with assert_raises(BotError) as error_context:
             dealer.load()
 
-        assert not dealer.is_done
+        assert dealer.is_done
         assert_in("no features bank", error_context.exception.message.lower())
         self.mocked_open.assert_called_once_with(DEFAULT_BANK_PATH, "rb")
 
@@ -275,18 +285,16 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_mkdir.assert_not_called()
 
     def test_feature_with_no_scenarios(self):
-        """Dealing a "null" feature should give the 'done' message."""
+        """An empty feature is skipped."""
         feature = "Feature: An empty feature"
         self._mock_dealer_functions(feature)
         dealer = self._load_dealer()
 
         dealer.deal()
 
-        # If directory already exist, we should proceed as usual.
         assert dealer.is_done
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "wb")
-        self._assert_writes(["", feature, ])
-        self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
+        self.mocked_open.assert_not_called()
+        self.mocked_mkdir.assert_not_called()
 
     def test_features_directory_already_exists(self):
         """Test deal() works even if the features directory already exist."""
@@ -310,7 +318,6 @@ class TestDealNext(BaseDealerTest):
     def teardown(self):
         patch.stopall()
 
-        self.mocked_mkdir.assert_not_called()
         self.mocked_config.assert_not_called()
 
     def test_no_more_scenarios(self):
@@ -322,6 +329,7 @@ class TestDealNext(BaseDealerTest):
 
         assert dealer.is_done
         self.mocked_open.assert_not_called()
+        self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
 
     def test_should_not_deal_another(self):
@@ -345,6 +353,7 @@ class TestDealNext(BaseDealerTest):
         assert not dealer.is_done
         assert_in("can't deal", error_context.exception.message.lower())
         self.mocked_open.assert_not_called()
+        self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
         self.mocked_popen.return_value.wait.assert_called_once_with()
 
@@ -368,5 +377,46 @@ class TestDealNext(BaseDealerTest):
         assert not dealer.is_done
         self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "ab")
         self._assert_writes([expected_scenario + "\n", ])
+        self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
         self.mocked_popen.return_value.wait.assert_called_once_with()
+
+    def test_dealing_from_two_banks(self):
+        """When the first bank is done, deal from the second if available."""
+        bank_path_1 = "/path/to/first.bank"
+        bank_path_2 = "/path/to/second.bank"
+        (feature_1, scenario_1_1) = (
+            "Feature: Tweedle-Dee",
+            "  Scenario: Agree to have a battle")
+        (feature_2, scenario_2_1, scenario_2_2) = (
+            "Feature: Tweedle-Dum",
+            "  Scenario: Being frightened by a monsterous crow",
+            "  Scenario: Forget quarrel")
+
+        self._mock_dealer_functions()
+        self.mocked_open.return_value.read.side_effect = [
+            "\n".join([feature_1, scenario_1_1, ]),
+            "\n".join([feature_2, scenario_2_1, scenario_2_2, ]),
+        ]
+
+        dealer = self._load_dealer(bank_paths = [bank_path_1, bank_path_2, ])
+        dealer.deal()
+
+        self.mocked_open.assert_any_call(bank_path_1.replace("bank", "feature"), "wb")
+        self._assert_writes(["", feature_1 + "\n", scenario_1_1, ])
+        self.mocked_mkdir.assert_called_once_with(dirname(bank_path_1.replace("bank", "feature")))
+        self.mocked_popen.assert_not_called()
+        self.mocked_config.assert_not_called()
+
+        self.mocked_open.reset_mock()
+        self.mocked_mkdir.reset_mock()
+        self.mocked_popen.reset_mock()
+        self.mocked_config.reset_mock()
+
+        dealer.deal()
+
+        self.mocked_open.assert_any_call(bank_path_2.replace("bank", "feature"), "wb")
+        self._assert_writes(["", feature_2 + "\n", scenario_2_1 + "\n", ])
+        self.mocked_mkdir.assert_called_once_with(dirname(bank_path_2.replace("bank", "feature")))
+        self.mocked_popen.assert_not_called()
+        self.mocked_config.assert_not_called()

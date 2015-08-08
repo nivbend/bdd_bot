@@ -9,11 +9,7 @@ Feature: Initialize Bot
             Feature: A feature with no scenarios
             """
         When we first deal a scenario
-        Then the "features/all.feature" file is created
-        And "features/all.feature" contains:
-            """
-            Feature: A feature with no scenarios
-            """
+        Then the "features/all.feature" file isn't created
 
     Scenario: One feature, one scenario
         Given the features bank:

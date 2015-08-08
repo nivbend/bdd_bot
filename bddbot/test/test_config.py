@@ -35,7 +35,7 @@ class TestGeneral(BaseConfigTest):
         config = BotConfiguration()
 
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
-        assert_equal(DEFAULT_BANK_PATH, config.bank)
+        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
         self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_not_called()
 
@@ -46,7 +46,7 @@ class TestGeneral(BaseConfigTest):
         config = BotConfiguration()
 
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
-        assert_equal(DEFAULT_BANK_PATH, config.bank)
+        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
         self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_called_once_with()
         self.mocked_open.return_value.read.assert_called_once_with()
@@ -63,7 +63,7 @@ class TestGeneral(BaseConfigTest):
         config = BotConfiguration()
 
         assert_equal([test_command, ], list(config.test_commands))
-        assert_equal(bank_path, config.bank)
+        assert_equal([bank_path, ], list(config.bank))
         self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_called_once_with()
 
@@ -75,29 +75,36 @@ class TestGeneral(BaseConfigTest):
         config = BotConfiguration(config_path)
 
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
-        assert_equal(DEFAULT_BANK_PATH, config.bank)
+        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
         self.mocked_open.assert_any_call(config_path, "rb")
         self.mocked_open.return_value.read.assert_called_once_with()
 
 class TestBankPath(BaseConfigTest):
     """Test setting the bank path/s."""
-    CASES = [None, "", "/path/to/features.bank", ]
+    CASES = [
+        (None,                                  [DEFAULT_BANK_PATH, ]),
+        ("",                                    [DEFAULT_BANK_PATH, ]),
+        ([],                                    [DEFAULT_BANK_PATH, ]),
+        ("/path/to/main.bank",                  ["/path/to/main.bank", ]),
+        (["banks/single-file.bank", ],          ["banks/single-file.bank", ]),
+        (["banks/1.bank", "banks/2.bank", ],    ["banks/1.bank", "banks/2.bank", ]),
+    ]
 
     def test_supply_bank_path(self):
         """Setting the bank value should set the appropriate attribute."""
-        for path in self.CASES:
-            yield self._check_bank_path, path
+        for (value, expected_paths) in self.CASES:
+            yield self._check_bank_path, value, expected_paths
 
-    def _check_bank_path(self, path):
+    def _check_bank_path(self, value, expected_paths):
         # pylint: disable=missing-docstring
         self._mock_config_functions({
-            "bank": path,
+            "bank": value,
         })
 
         config = BotConfiguration()
 
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
-        assert_equal(path, config.bank)
+        assert_equal(expected_paths, list(config.bank))
         self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_called_once_with()
 
@@ -124,6 +131,6 @@ class TestBDDTestCommands(BaseConfigTest):
         config = BotConfiguration()
 
         assert_equal(expected_commands, list(config.test_commands))
-        assert_equal(DEFAULT_BANK_PATH, config.bank)
+        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
         self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_called_once_with()
