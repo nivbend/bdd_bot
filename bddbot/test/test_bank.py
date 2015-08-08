@@ -33,6 +33,34 @@ def test_multiline_text_error():
 
     assert_in("multiline", error_context.exception.message.lower())
 
+def test_dangling_feature_tags():
+    """Raise exception if there are any tags without a feature definition."""
+    contents = "\n".join([
+        "@dangling",
+    ])
+
+    parser = BankParser()
+    with assert_raises(BotError) as error_context:
+        parser.parse(contents)
+
+    assert_in("dangling tags", error_context.exception.message.lower())
+
+def test_dangling_scenario_tags():
+    """Raise exception if there are any dangling tags."""
+    contents = "\n".join([
+        "Feature: Tags and the end of the file",
+        "    Scenario: A bad scenario",
+        "        Given we a scenario",
+        "        And then some tags come out of nowhere, really",
+        "        @this_is_bad",
+    ])
+
+    parser = BankParser()
+    with assert_raises(BotError) as error_context:
+        parser.parse(contents)
+
+    assert_in("dangling tags", error_context.exception.message.lower())
+
 def _check_split_bank(expected, text):
     """Compare two bank splits by their structure."""
     (expected_header, expected_feature, expected_scenarios) = expected
@@ -104,7 +132,23 @@ TEST_CASES = [
      ],
     ),
 
-    # A very complex example, with a background and scenario outlines.
+    # A feature with tags.
+    ("\n".join([
+         "@awesome",
+         "@cool @groovy",
+         "Feature: Having tags",
+         "    Scenario: Something to test",
+     ]),
+     "\n".join([
+         "@awesome",
+         "@cool @groovy",
+         "Feature: Having tags",
+         "",
+     ]),
+     ["    Scenario: Something to test", ],
+    ),
+
+    # A very complex example, with a background and scenario outlines and tags.
     ("\n".join([
          "Feature: A very complex feature indeed",
          "    If we can parse this baby, we can probably parse anything.",
@@ -113,6 +157,7 @@ TEST_CASES = [
          "        Given the long, forgotten past",
          "        And some stuff best not remembered",
          "",
+         "    @first_scenario",
          "    Scenario: The very first scenario",
          "        Given we have a few scenarios",
          "        When we split the feature file",
@@ -120,6 +165,7 @@ TEST_CASES = [
          "        Then we may get a false-positive",
          "        And we suck as testers",
          "",
+         "    @outline @data_table",
          "    Scenario Outline: Some cases",
          "        Given <value>",
          "        When <action>",
@@ -129,6 +175,8 @@ TEST_CASES = [
          "        | A2    | B2     | C2     |",
          "        | A3    | B3     | C3     |",
          "",
+         "    @tricky",
+         "    @complex",
          "    Scenario: Another scenario",
          "        Given some multiline text:",
          "            \"\"\"",
@@ -161,6 +209,7 @@ TEST_CASES = [
          "\n",
      ]),
      ["\n".join([
+          "    @first_scenario",
           "    Scenario: The very first scenario",
           "        Given we have a few scenarios",
           "        When we split the feature file",
@@ -170,6 +219,7 @@ TEST_CASES = [
           "\n",
       ]),
       "\n".join([
+          "    @outline @data_table",
           "    Scenario Outline: Some cases",
           "        Given <value>",
           "        When <action>",
@@ -181,6 +231,8 @@ TEST_CASES = [
           "\n",
       ]),
       "\n".join([
+          "    @tricky",
+          "    @complex",
           "    Scenario: Another scenario",
           "        Given some multiline text:",
           "            \"\"\"",

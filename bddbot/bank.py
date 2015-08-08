@@ -4,6 +4,7 @@ import re
 from .errors import BotError
 
 REGEX_FEATURE_START = re.compile(r"^\s*Feature:")
+REGEX_TAGS = re.compile(r"^\s*(?:@\w+(?:\s+@\w+)*)")
 REGEX_SCENARIO_START = re.compile(r"^\s*Scenario(?: Outline)?:")
 REGEX_MULTILINE_START = re.compile(r"^\s*(?:\"\"\"|''')")
 
@@ -18,9 +19,11 @@ class BankParser(object):
     tables and scenario outlines' examples).
     """
     (STATE_HEADER,
+     STATE_FEATURE_TAGS,
      STATE_FEATURE,
+     STATE_SCENARIO_TAGS,
      STATE_SCENARIO,
-     STATE_MULTILINE) = range(4)
+     STATE_MULTILINE) = range(6)
 
     def __init__(self):
         self.header = []
@@ -29,9 +32,12 @@ class BankParser(object):
 
         self.__state = self.STATE_HEADER
         self.__multiline_delimiter = None
+        self.__tags = []
         self.__callbacks = {
             self.STATE_HEADER: self.__parse_header,
+            self.STATE_FEATURE_TAGS: self.__parse_feature_tags,
             self.STATE_FEATURE: self.__parse_feature,
+            self.STATE_SCENARIO_TAGS: self.__parse_scenario_tags,
             self.STATE_SCENARIO: self.__parse_scenario,
             self.STATE_MULTILINE: self.__parse_multiline_text,
         }
@@ -49,27 +55,64 @@ class BankParser(object):
         if self.STATE_MULTILINE == self.__state:
             raise BotError("Multiline text has no end")
 
+        if self.__state in (self.STATE_FEATURE_TAGS, self.STATE_SCENARIO_TAGS, ):
+            raise BotError("Dangling tags")
+
         self.__normalize()
 
         return (self.header, self.feature, self.scenarios)
 
     def __parse_header(self, line):
         """Add the beginning of a file up to the Feature section to the header part."""
-        if REGEX_FEATURE_START.match(line):
+        if REGEX_TAGS.match(line):
+            self.__state = self.STATE_FEATURE_TAGS
+            self.__parse_line(line)
+
+        elif REGEX_FEATURE_START.match(line):
             self.__state = self.STATE_FEATURE
             self.__parse_line(line)
 
         else:
             self.header.append(line)
 
+    def __parse_feature_tags(self, line):
+        """Add tags before the beginning of a feature to the feature once it is reached."""
+        if REGEX_TAGS.match(line):
+            self.feature.append(line)
+
+        elif REGEX_FEATURE_START.match(line):
+            self.__state = self.STATE_FEATURE
+            self.__parse_line(line)
+
+        else:
+            raise BotError("Invalid line (should be tags or feature): {:s}".format(line.lstrip()))
+
     def __parse_feature(self, line):
         """Add everything up to the beginning of the first scenario to the feature's body."""
-        if REGEX_SCENARIO_START.match(line):
+        if REGEX_TAGS.match(line):
+            self.__state = self.STATE_SCENARIO_TAGS
+            self.__tags = []
+            self.__parse_line(line)
+
+        elif REGEX_SCENARIO_START.match(line):
             self.__state = self.STATE_SCENARIO
             self.__parse_line(line)
 
         else:
             self.feature.append(line)
+
+    def __parse_scenario_tags(self, line):
+        """Add tags before the beginning of a scenario to the scenario once it is reached."""
+        if REGEX_TAGS.match(line):
+            self.__tags.append(line)
+
+        elif REGEX_SCENARIO_START.match(line):
+            self.__state = self.STATE_SCENARIO
+            self.scenarios.append(self.__tags)
+            self.scenarios[-1].append(line)
+
+        else:
+            raise BotError("Invalid line (should be tags or scenario): {:s}".format(line.lstrip()))
 
     def __parse_scenario(self, line):
         """Add the body of the current scenario up till the next scenario starts.
@@ -77,6 +120,11 @@ class BankParser(object):
         We take care to notice multiline texts since those might have Feature/Scenario sections
         in them that might confuse the parser.
         """
+        if REGEX_TAGS.match(line):
+            self.__state = self.STATE_SCENARIO_TAGS
+            self.__tags = [line, ]
+            return
+
         if REGEX_SCENARIO_START.match(line):
             self.scenarios.append([])
 

@@ -222,3 +222,32 @@ Feature: Initialize Bot
                     Then we'll "casually" mention there are pubs for that kind of thing
                     And we'll stick around and glare until everyone are back to work
             """
+
+    Scenario: A scenario with tags
+        Given the features bank:
+            """
+            Feature: Making pizza
+                Scenario: Neapolitan
+                    Given we have San Marzano tomatoes
+                    And we have mozzarella di bufala Campana
+                    When we put it all together
+                    We speak-a lik-a Italians!
+
+                @vegetarian @vegan
+                Scenario: Meatless Monday
+                    Given we have green and red peppers
+                    And we have tomatoes
+                    But we don't have any dairy products
+                    When we put it all together
+                    We have ourselves a pizza without any meat
+            """
+        When we first deal a scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: Making pizza
+                Scenario: Neapolitan
+                    Given we have San Marzano tomatoes
+                    And we have mozzarella di bufala Campana
+                    When we put it all together
+                    We speak-a lik-a Italians!
+            """
