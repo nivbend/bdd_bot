@@ -9,11 +9,7 @@ Feature: Initialize Bot
             Feature: A feature with no scenarios
             """
         When we first deal a scenario
-        Then the "features/all.feature" file is created
-        And "features/all.feature" contains:
-            """
-            Feature: A feature with no scenarios
-            """
+        Then the "features/all.feature" file isn't created
 
     Scenario: One feature, one scenario
         Given the features bank:
@@ -104,6 +100,42 @@ Feature: Initialize Bot
                     Then stuff will go down
             """
 
+    Scenario: Scenario outline
+        Given the features bank:
+            """
+            Feature: A feature with a scenario outline
+                Scenario Outline: A general test case
+                    Given someone named <name>
+                    When they <something>
+                    Then they'll become <superhero>
+
+                    Examples:
+                    | name  | something              | superhero       |
+                    | Peter | are bitten by a spider | Spider-Man      |
+                    | Steve | enter a test program   | Captain America |
+                    | Bruce | get hit by gamma rays  | The Hulk        |
+
+                Scenario: This here to make sure we get the right part
+                    Given the scenario outline above
+                    When we only deal up till that scenario
+                    Then this scenario isn't written to the feature file
+            """
+        When we first deal a scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: A feature with a scenario outline
+                Scenario Outline: A general test case
+                    Given someone named <name>
+                    When they <something>
+                    Then they'll become <superhero>
+
+                    Examples:
+                    | name  | something              | superhero       |
+                    | Peter | are bitten by a spider | Spider-Man      |
+                    | Steve | enter a test program   | Captain America |
+                    | Bruce | get hit by gamma rays  | The Hulk        |
+            """
+
     Scenario: Scenarios with multiline texts
         Given the features bank:
             """
@@ -189,4 +221,33 @@ Feature: Initialize Bot
                     When we enter the room
                     Then we'll "casually" mention there are pubs for that kind of thing
                     And we'll stick around and glare until everyone are back to work
+            """
+
+    Scenario: A scenario with tags
+        Given the features bank:
+            """
+            Feature: Making pizza
+                Scenario: Neapolitan
+                    Given we have San Marzano tomatoes
+                    And we have mozzarella di bufala Campana
+                    When we put it all together
+                    We speak-a lik-a Italians!
+
+                @vegetarian @vegan
+                Scenario: Meatless Monday
+                    Given we have green and red peppers
+                    And we have tomatoes
+                    But we don't have any dairy products
+                    When we put it all together
+                    We have ourselves a pizza without any meat
+            """
+        When we first deal a scenario
+        Then "features/all.feature" contains:
+            """
+            Feature: Making pizza
+                Scenario: Neapolitan
+                    Given we have San Marzano tomatoes
+                    And we have mozzarella di bufala Campana
+                    When we put it all together
+                    We speak-a lik-a Italians!
             """

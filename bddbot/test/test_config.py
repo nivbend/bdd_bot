@@ -4,7 +4,7 @@ import yaml
 from nose.tools import assert_equal
 from mock import patch, mock_open, DEFAULT
 from bddbot.config import BotConfiguration
-from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_TEST_COMMAND
+from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_BANK_PATH, DEFAULT_TEST_COMMAND
 
 class BaseConfigTest(object):
     """The base class for BotConfiguration test-cases."""
@@ -35,6 +35,7 @@ class TestGeneral(BaseConfigTest):
         config = BotConfiguration()
 
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
+        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
         self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_not_called()
 
@@ -45,6 +46,24 @@ class TestGeneral(BaseConfigTest):
         config = BotConfiguration()
 
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
+        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
+        self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
+        self.mocked_open.return_value.read.assert_called_once_with()
+        self.mocked_open.return_value.read.assert_called_once_with()
+
+    def test_multiple_options(self):
+        """Supplying multiple options should set all appropriate attributes."""
+        bank_path = "/path/to/features.bank"
+        test_command = ["behave", "--format=null", ]
+        self._mock_config_functions({
+            "test_command": " ".join(test_command),
+            "bank": bank_path,
+        })
+
+        config = BotConfiguration()
+
+        assert_equal([test_command, ], list(config.test_commands))
+        assert_equal([bank_path, ], list(config.bank))
         self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_called_once_with()
 
@@ -56,7 +75,37 @@ class TestGeneral(BaseConfigTest):
         config = BotConfiguration(config_path)
 
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
+        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
         self.mocked_open.assert_any_call(config_path, "rb")
+        self.mocked_open.return_value.read.assert_called_once_with()
+
+class TestBankPath(BaseConfigTest):
+    """Test setting the bank path/s."""
+    CASES = [
+        (None,                                  [DEFAULT_BANK_PATH, ]),
+        ("",                                    [DEFAULT_BANK_PATH, ]),
+        ([],                                    [DEFAULT_BANK_PATH, ]),
+        ("/path/to/main.bank",                  ["/path/to/main.bank", ]),
+        (["banks/single-file.bank", ],          ["banks/single-file.bank", ]),
+        (["banks/1.bank", "banks/2.bank", ],    ["banks/1.bank", "banks/2.bank", ]),
+    ]
+
+    def test_supply_bank_path(self):
+        """Setting the bank value should set the appropriate attribute."""
+        for (value, expected_paths) in self.CASES:
+            yield self._check_bank_path, value, expected_paths
+
+    def _check_bank_path(self, value, expected_paths):
+        # pylint: disable=missing-docstring
+        self._mock_config_functions({
+            "bank": value,
+        })
+
+        config = BotConfiguration()
+
+        assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
+        assert_equal(expected_paths, list(config.bank))
+        self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_called_once_with()
 
 class TestBDDTestCommands(BaseConfigTest):
@@ -82,5 +131,6 @@ class TestBDDTestCommands(BaseConfigTest):
         config = BotConfiguration()
 
         assert_equal(expected_commands, list(config.test_commands))
+        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
         self.mocked_open.assert_any_call(DEFAULT_CONFIG_FILENAME, "rb")
         self.mocked_open.return_value.read.assert_called_once_with()
