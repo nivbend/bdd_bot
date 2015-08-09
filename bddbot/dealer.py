@@ -7,8 +7,8 @@ Features are written incrementaly from a bank file ("*.bank") to a corrosponding
 file ("*.feature"). So for example, the bank file 'banks/awesome.bank' will be translated to the
 feature file 'features/awesome.feature'.
 """
-from os.path import dirname
-from os import mkdir, getcwd
+from os.path import dirname, isdir, join
+from os import mkdir, getcwd, listdir
 from subprocess import Popen, PIPE
 from collections import OrderedDict
 from .bank import Bank
@@ -34,15 +34,10 @@ class Dealer(object):
             return
 
         for path in self.__config.bank:
-            output_path = path.replace("bank", "feature")
-            if not output_path.endswith(".feature"):
-                output_path += ".feature"
-
-            try:
-                with open(path, "rb") as bank_input:
-                    self.__banks[output_path] = Bank(bank_input.read())
-            except IOError:
-                raise BotError("No features bank in {:s}".format(getcwd()))
+            if isdir(path):
+                self._load_directory(path)
+            else:
+                self._load_file(path)
 
         self.__is_loaded = True
 
@@ -74,6 +69,27 @@ class Dealer(object):
             self._deal_another(path, current_bank)
         else:
             raise BotError("Can't deal while there are unimplemented scenarios")
+
+    def _load_directory(self, path):
+        """Load all bank files under a given directory."""
+        for filename in listdir(path):
+            if not filename.endswith(".bank"):
+                continue
+
+            filename = join(path, filename)
+            self._load_file(filename)
+
+    def _load_file(self, path):
+        """Load a bank file."""
+        output_path = path.replace("bank", "feature")
+        if not output_path.endswith(".feature"):
+            output_path += ".feature"
+
+        try:
+            with open(path, "rb") as bank_input:
+                self.__banks[output_path] = Bank(bank_input.read())
+        except IOError:
+            raise BotError("No features bank in {:s}".format(getcwd()))
 
     def _are_tests_passing(self):
         """Verify that all scenarios were implemented using `behave`.

@@ -1,8 +1,9 @@
 """Test the Dealer class."""
 
 from subprocess import Popen
-from os import mkdir
-from os.path import dirname
+from os import mkdir, listdir
+from os.path import dirname, basename, join, isdir
+from stat import S_IFDIR
 from nose.tools import assert_equal, assert_in, assert_raises
 from mock import patch, call, mock_open, create_autospec, ANY, DEFAULT
 from bddbot.dealer import Dealer, BotError
@@ -129,25 +130,41 @@ class TestConfiguration(BaseDealerTest):
         for (bank_path, expected_feature_path) in self.BANK_FILE_PATHS:
             yield self._check_setting_bank_file_path, bank_path, expected_feature_path
 
-    def _check_setting_bank_file_path(self, bank_path, expected_feature_path):
-        # pylint: disable=missing-docstring
-        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
-        dealer = self._load_dealer(bank_paths = [bank_path, ])
-
-        dealer.deal()
-
-        self.mocked_open.assert_any_call(expected_feature_path, "wb")
-        self._assert_writes(["", self.FEATURE + "\n", self.SCENARIO_A, ])
-        self.mocked_mkdir.assert_called_once_with(dirname(expected_feature_path))
-        self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_not_called()
-
     def test_setting_multiple_bank_file_paths(self):
         """Setting multiple bank file paths will read from all of them."""
         bank_path_1 = "/path/to/first.bank"
         bank_path_2 = "/path/to/second.bank"
         self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
         self._load_dealer(bank_paths = [bank_path_1, bank_path_2, ])
+
+    def test_setting_bank_directory(self):
+        """Supplying a directory path as a bank will iterate over all files under it."""
+        bank_directory_path = "/path/to/banks"
+        bank_path_1 = join(bank_directory_path, "first.bank")
+        bank_path_2 = join(bank_directory_path, "second.bank")
+
+        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
+        self.mocked_config.return_value.bank = [bank_directory_path, ]
+        mocked_isdir = create_autospec(isdir)
+        mocked_isdir.return_value.st_mode = S_IFDIR
+        mocked_listdir = create_autospec(listdir, return_value = [
+            basename(bank_path_1),
+            basename(bank_path_2),
+            "not_a_bank.txt",
+        ])
+
+        dealer = Dealer()
+        with patch.multiple("bddbot.dealer", isdir = mocked_isdir, listdir = mocked_listdir):
+            dealer.load()
+
+        mocked_isdir.assert_called_once_with(bank_directory_path)
+        mocked_listdir.assert_called_once_with(bank_directory_path)
+        self.mocked_open.assert_any_call(bank_path_1, "rb")
+        self.mocked_open.assert_any_call(bank_path_2, "rb")
+        assert_equal(2, self.mocked_open.return_value.read.call_count)
+        self.mocked_mkdir.assert_not_called()
+        self.mocked_popen.assert_not_called()
+        self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
 
     def test_setting_test_command(self):
         """Using custom test commands to verify scenarios."""
@@ -166,6 +183,19 @@ class TestConfiguration(BaseDealerTest):
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call(test_command_1, stdout = ANY, stderr = ANY)
         self.mocked_popen.assert_any_call(test_command_2, stdout = ANY, stderr = ANY)
+        self.mocked_config.assert_not_called()
+
+    def _check_setting_bank_file_path(self, bank_path, expected_feature_path):
+        # pylint: disable=missing-docstring
+        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
+        dealer = self._load_dealer(bank_paths = [bank_path, ])
+
+        dealer.deal()
+
+        self.mocked_open.assert_any_call(expected_feature_path, "wb")
+        self._assert_writes(["", self.FEATURE + "\n", self.SCENARIO_A, ])
+        self.mocked_mkdir.assert_called_once_with(dirname(expected_feature_path))
+        self.mocked_popen.assert_not_called()
         self.mocked_config.assert_not_called()
 
 class TestLoading(BaseDealerTest):

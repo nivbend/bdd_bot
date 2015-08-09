@@ -81,6 +81,34 @@ Feature: Configure parameters
                 Scenario: Giving money to the poor
             """
 
+    Scenario: Searching a directory for feature banks
+        Given the file ".bddbotrc" contains:
+            """
+            bank: my-banks
+            """
+        And the features bank "my-banks/first.bank":
+            """
+            Feature: The first feature
+                Scenario: The first scenario
+            """
+        And the features bank "my-banks/second.bank":
+            """
+            Feature: The second feature
+                Scenario: The second scenario
+            """
+        And we dealt 1 scenario/s
+        When we deal another scenario
+        Then "my-features/first.feature" contains:
+            """
+            Feature: The first feature
+                Scenario: The first scenario
+            """
+        Then "my-features/second.feature" contains:
+            """
+            Feature: The second feature
+                Scenario: The second scenario
+            """
+
     Scenario: Setting the test command
         Given the file ".bddbotrc" contains:
             """
