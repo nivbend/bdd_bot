@@ -1,8 +1,7 @@
 # pylint: disable=missing-docstring, no-name-in-module, invalid-name
 
 from behave import given, when, then
-from os import makedirs
-from os.path import isdir, isfile, dirname
+from os.path import isdir, isfile
 from nose.tools import assert_false, assert_is_none
 from bddbot.dealer import Dealer
 from bddbot.config import DEFAULT_BANK_PATH
@@ -18,25 +17,16 @@ def a_features_bank(context, filename):
     if not filename:
         filename = DEFAULT_BANK_PATH
 
-    the_file_contains(context, filename)
+    write_to_file(context, filename)
 
 @given("the file \"(?P<filename>.+)\" contains")
-def the_file_contains(context, filename):
+def write_to_file(context, filename):
     assert_false(isfile(filename), "'{:s}' already exist".format(filename))
-
-    try:
-        makedirs(dirname(filename))
-    except OSError:
-        # Directory already exist.
-        pass
-
-    with open(filename, "wb") as output:
-        output.write(context.text)
+    context.sandbox.write(filename, context.text)
 
 @given("the directory \"(?P<directory>.+)\" exists")
-def directory_exists(context, directory):
-    # pylint: disable=unused-argument
-    makedirs(directory)
+def create_directory(context, directory):
+    context.sandbox.makedir(directory)
 
 @when("we initialize the bot's state")
 def load_state(context):

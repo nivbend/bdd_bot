@@ -1,18 +1,17 @@
 # pylint: disable=missing-docstring
 
-from tempfile import mkdtemp
 from os import chdir
-from shutil import rmtree
 from subprocess import Popen
 from mock import patch, create_autospec
+from testfixtures import TempDirectory
 from behave import use_step_matcher
 
 use_step_matcher("re")
 
 def before_scenario(context, scenario):
     # Setup a temporary directory for the scenario to run in.
-    context.temp_dir = mkdtemp()
-    chdir(context.temp_dir)
+    context.sandbox = TempDirectory()
+    chdir(context.sandbox.path)
 
     # Reset attributes.
     context.dealer = None
@@ -26,5 +25,5 @@ def before_scenario(context, scenario):
 
 def after_scenario(context, scenario):
     # Delete temporary sandbox directory.
-    rmtree(context.temp_dir)
+    context.sandbox.cleanup()
     scenario.patcher.stop()
