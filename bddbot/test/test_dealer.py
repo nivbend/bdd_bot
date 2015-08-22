@@ -3,7 +3,6 @@
 from subprocess import Popen
 from os import mkdir, listdir
 from os.path import dirname, basename, join, isdir
-from stat import S_IFDIR
 from nose.tools import assert_equal, assert_in, assert_raises
 from mock import patch, call, create_autospec, ANY
 from mock_open import MockOpen
@@ -23,12 +22,16 @@ class BaseDealerTest(object):
         self.mocked_popen = create_autospec(Popen)
         self.mocked_config = create_autospec(BotConfiguration)
 
-    def _mock_dealer_functions(self, content = ""):
+    def _mock_dealer_functions(self, default_bank = None):
         """Mock out standard library functions used by the dealer module."""
-        self.mocked_open = MockOpen(read_data = content)
+        self.mocked_open = MockOpen()
         self.mocked_mkdir.reset_mock()
         self.mocked_popen.reset_mock()
         self.mocked_config.reset_mock()
+
+        if default_bank:
+            self.mocked_open[DEFAULT_BANK_PATH].read_data = default_bank
+
         patcher = patch.multiple(
             "bddbot.dealer",
             open = self.mocked_open,
@@ -141,10 +144,9 @@ class TestConfiguration(BaseDealerTest):
         bank_path_1 = join(bank_directory_path, "first.bank")
         bank_path_2 = join(bank_directory_path, "second.bank")
 
-        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
+        self._mock_dealer_functions()
         self.mocked_config.return_value.bank = [bank_directory_path, ]
         mocked_isdir = create_autospec(isdir)
-        mocked_isdir.return_value.st_mode = S_IFDIR
         mocked_listdir = create_autospec(listdir, return_value = [
             basename(bank_path_1),
             basename(bank_path_2),
@@ -160,6 +162,8 @@ class TestConfiguration(BaseDealerTest):
         assert_equal(
             [call(bank_path_1, "rb"), call(bank_path_2, "rb"), ],
             self.mocked_open.call_args_list)
+        self.mocked_open[bank_path_1].read.assert_called_once_with()
+        self.mocked_open[bank_path_2].read.assert_called_once_with()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
@@ -185,7 +189,8 @@ class TestConfiguration(BaseDealerTest):
 
     def _check_setting_bank_file_path(self, bank_path, expected_feature_path):
         # pylint: disable=missing-docstring
-        self._mock_dealer_functions("\n".join([self.FEATURE, self.SCENARIO_A, ]))
+        self._mock_dealer_functions()
+        self.mocked_open[bank_path].read_data = "\n".join([self.FEATURE, self.SCENARIO_A, ])
         dealer = self._load_dealer(bank_paths = [bank_path, ])
 
         dealer.deal()
@@ -218,7 +223,7 @@ class TestLoading(BaseDealerTest):
 
     def test_no_features_bank_file(self):
         """Catch exception when trying to open a non-existent bank file."""
-        self.mocked_open.side_effect = IOError()
+        self.mocked_open[DEFAULT_BANK_PATH].side_effect = IOError()
 
         dealer = Dealer()
         with assert_raises(BotError) as error_context:
@@ -304,7 +309,7 @@ class TestDealFirst(BaseDealerTest):
 
     def test_empty_features_bank(self):
         """Dealing from an empty feature file should give the 'done' message."""
-        self._mock_dealer_functions("")
+        self._mock_dealer_functions()
         dealer = self._load_dealer()
 
         dealer.deal()
@@ -316,8 +321,7 @@ class TestDealFirst(BaseDealerTest):
 
     def test_feature_with_no_scenarios(self):
         """An empty feature is skipped."""
-        feature = "Feature: An empty feature"
-        self._mock_dealer_functions(feature)
+        self._mock_dealer_functions("Feature: an empty feature")
         dealer = self._load_dealer()
 
         dealer.deal()
@@ -397,7 +401,7 @@ class TestDealNext(BaseDealerTest):
             "  Scenario: The last scenario",
             ]
 
-        self._mock_dealer_functions(content = "\n".join(contents))
+        self._mock_dealer_functions("\n".join(contents))
         self.mocked_config.return_value.test_commands = [DEFAULT_TEST_COMMAND.split(), ]
         dealer = self._deal_first(self.FEATURE, self.SCENARIO_1 + "\n")
 
