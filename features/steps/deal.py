@@ -40,7 +40,5 @@ def we_deal_another_scenario(context):
 
 @then("\"(?P<filename>.+)\" contains")
 def file_contains(context, filename):
-    with open(filename, "rb") as feature_file:
-        features = feature_file.read()
-
+    features = context.sandbox.read(filename)
     assert_multi_line_equal(context.text.strip(" \n"), features.strip(" \n"))

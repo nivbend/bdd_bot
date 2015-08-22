@@ -2,7 +2,7 @@
 
 import yaml
 
-DEFAULT_CONFIG_FILENAME = ".bddbotrc"
+DEFAULT_CONFIG_FILENAME = "bddbot.yml"
 DEFAULT_BANK_PATH = "banks/all.bank"
 DEFAULT_TEST_COMMAND = "behave"
 

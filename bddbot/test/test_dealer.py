@@ -5,7 +5,8 @@ from os import mkdir, listdir
 from os.path import dirname, basename, join, isdir
 from stat import S_IFDIR
 from nose.tools import assert_equal, assert_in, assert_raises
-from mock import patch, call, mock_open, create_autospec, ANY, DEFAULT
+from mock import patch, call, create_autospec, ANY
+from mock_open import MockOpen
 from bddbot.dealer import Dealer, BotError
 from bddbot.config import BotConfiguration
 from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_BANK_PATH, DEFAULT_TEST_COMMAND
@@ -24,7 +25,7 @@ class BaseDealerTest(object):
 
     def _mock_dealer_functions(self, content = ""):
         """Mock out standard library functions used by the dealer module."""
-        self.mocked_open = mock_open(read_data = content)
+        self.mocked_open = MockOpen(read_data = content)
         self.mocked_mkdir.reset_mock()
         self.mocked_popen.reset_mock()
         self.mocked_config.reset_mock()
@@ -50,9 +51,8 @@ class BaseDealerTest(object):
         dealer.load()
 
         # Assert actions during load().
-        for path in bank_paths:
-            self.mocked_open.assert_any_call(path, "rb")
-        assert_equal(len(bank_paths), self.mocked_open.return_value.read.call_count)
+        assert_equal([call(path, "rb") for path in bank_paths], self.mocked_open.call_args_list)
+        assert_equal(len(bank_paths), self.mocked_open.call_count)
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
@@ -71,7 +71,7 @@ class BaseDealerTest(object):
         dealer.deal()
 
         # If directory already exist, we should proceed as usual.
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "wb")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "wb")
         self._assert_writes(["", feature + "\n", scenario, ])
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
         self.mocked_popen.assert_not_called()
@@ -85,11 +85,9 @@ class BaseDealerTest(object):
 
         return dealer
 
-    def _assert_writes(self, chunks):
+    def _assert_writes(self, chunks, path = DEFAULT_FEATURE_PATH):
         """Verify all calls to write()."""
-        assert_equal(
-            [call(chunk) for chunk in chunks],
-            self.mocked_open.return_value.write.mock_calls)
+        assert_equal([call(chunk) for chunk in chunks], self.mocked_open[path].write.mock_calls)
 
 class TestConfiguration(BaseDealerTest):
     """Test tweaking behavior with the configuration file.
@@ -115,7 +113,7 @@ class TestConfiguration(BaseDealerTest):
 
     def test_setting_costum_file(self):
         """Setting a custom configuration file path."""
-        path = "/path/to/bddbotrc"
+        path = "/path/to/bddbotrc.yml"
         self._mock_dealer_functions()
 
         # pylint: disable=unused-variable
@@ -159,9 +157,9 @@ class TestConfiguration(BaseDealerTest):
 
         mocked_isdir.assert_called_once_with(bank_directory_path)
         mocked_listdir.assert_called_once_with(bank_directory_path)
-        self.mocked_open.assert_any_call(bank_path_1, "rb")
-        self.mocked_open.assert_any_call(bank_path_2, "rb")
-        assert_equal(2, self.mocked_open.return_value.read.call_count)
+        assert_equal(
+            [call(bank_path_1, "rb"), call(bank_path_2, "rb"), ],
+            self.mocked_open.call_args_list)
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
@@ -178,7 +176,7 @@ class TestConfiguration(BaseDealerTest):
         self.mocked_config.return_value.test_commands = [test_command_1, test_command_2, ]
         dealer.deal()
 
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "ab")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "ab")
         self._assert_writes([self.SCENARIO_B, ])
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call(test_command_1, stdout = ANY, stderr = ANY)
@@ -192,8 +190,10 @@ class TestConfiguration(BaseDealerTest):
 
         dealer.deal()
 
-        self.mocked_open.assert_any_call(expected_feature_path, "wb")
-        self._assert_writes(["", self.FEATURE + "\n", self.SCENARIO_A, ])
+        self.mocked_open.assert_called_once_with(expected_feature_path, "wb")
+        self._assert_writes(
+            ["", self.FEATURE + "\n", self.SCENARIO_A, ],
+            path = expected_feature_path)
         self.mocked_mkdir.assert_called_once_with(dirname(expected_feature_path))
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_not_called()
@@ -263,14 +263,14 @@ class TestDealFirst(BaseDealerTest):
         self._mock_dealer_functions("\n".join(self.CONTENTS))
         dealer = self._load_dealer()
 
-        self.mocked_open.side_effect = [IOError(), DEFAULT, ]
+        self.mocked_open[DEFAULT_FEATURE_PATH].side_effect = IOError()
         with assert_raises(BotError) as error_context:
             dealer.deal()
 
         # Couldn't open file for writing, so obviously no writes were perfomed.
         assert not dealer.is_done
         assert_in("couldn't write", error_context.exception.message.lower())
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "wb")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "wb")
         self._assert_writes([])
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
@@ -279,14 +279,14 @@ class TestDealFirst(BaseDealerTest):
         self._mock_dealer_functions("\n".join(self.CONTENTS))
         dealer = self._load_dealer()
 
-        self.mocked_open.return_value.write.side_effect = IOError()
+        self.mocked_open[DEFAULT_FEATURE_PATH].write.side_effect = IOError()
         with assert_raises(BotError) as error_context:
             dealer.deal()
 
         # First call to write() raised an IOError which was caught and translated.
         assert not dealer.is_done
         assert_in("couldn't write", error_context.exception.message.lower())
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "wb")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "wb")
         self._assert_writes([ANY, ])
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
@@ -298,7 +298,7 @@ class TestDealFirst(BaseDealerTest):
         dealer.deal()
 
         assert not dealer.is_done
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "wb")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "wb")
         self._assert_writes(["", self.FEATURE + "\n", self.SCENARIO_A + "\n", ])
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
@@ -336,7 +336,7 @@ class TestDealFirst(BaseDealerTest):
 
         # If directory already exist, we should proceed as usual.
         assert not dealer.is_done
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "wb")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "wb")
         self._assert_writes(["", self.FEATURE + "\n", self.SCENARIO_A + "\n", ])
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
@@ -405,7 +405,7 @@ class TestDealNext(BaseDealerTest):
         dealer.deal()
 
         assert not dealer.is_done
-        self.mocked_open.assert_any_call(DEFAULT_FEATURE_PATH, "ab")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "ab")
         self._assert_writes([expected_scenario + "\n", ])
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
@@ -423,30 +423,38 @@ class TestDealNext(BaseDealerTest):
             "  Scenario: Being frightened by a monsterous crow",
             "  Scenario: Forget quarrel")
 
+        feature_path_1 = bank_path_1.replace("bank", "feature")
+        feature_path_2 = bank_path_2.replace("bank", "feature")
+
         self._mock_dealer_functions()
-        self.mocked_open.return_value.read.side_effect = [
-            "\n".join([feature_1, scenario_1_1, ]),
-            "\n".join([feature_2, scenario_2_1, scenario_2_2, ]),
-        ]
+
+        self.mocked_open[bank_path_1].read_data = "\n".join([
+            feature_1,
+            scenario_1_1,
+        ])
+        self.mocked_open[bank_path_2].read_data = "\n".join([
+            feature_2,
+            scenario_2_1,
+            scenario_2_2,
+        ])
 
         dealer = self._load_dealer(bank_paths = [bank_path_1, bank_path_2, ])
         dealer.deal()
 
-        self.mocked_open.assert_any_call(bank_path_1.replace("bank", "feature"), "wb")
-        self._assert_writes(["", feature_1 + "\n", scenario_1_1, ])
-        self.mocked_mkdir.assert_called_once_with(dirname(bank_path_1.replace("bank", "feature")))
+        self.mocked_open.assert_called_once_with(feature_path_1, "wb")
+        self._assert_writes(["", feature_1 + "\n", scenario_1_1, ], path = feature_path_1)
+        self.mocked_mkdir.assert_called_once_with(dirname(feature_path_1))
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_not_called()
 
-        self.mocked_open.reset_mock()
         self.mocked_mkdir.reset_mock()
         self.mocked_popen.reset_mock()
         self.mocked_config.reset_mock()
 
         dealer.deal()
 
-        self.mocked_open.assert_any_call(bank_path_2.replace("bank", "feature"), "wb")
-        self._assert_writes(["", feature_2 + "\n", scenario_2_1 + "\n", ])
-        self.mocked_mkdir.assert_called_once_with(dirname(bank_path_2.replace("bank", "feature")))
+        self.mocked_open.assert_called_with(feature_path_2, "wb")
+        self._assert_writes(["", feature_2 + "\n", scenario_2_1 + "\n", ], path = feature_path_2)
+        self.mocked_mkdir.assert_called_once_with(dirname(feature_path_2))
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_not_called()
