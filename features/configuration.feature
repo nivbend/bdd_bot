@@ -4,7 +4,7 @@ Feature: Configure parameters
     I want to be able to set certain parameters in a configuration file
 
     Scenario: No configuration file
-        Given the file ".bddbotrc" doesn't exist
+        Given the file "bddbot.yml" doesn't exist
         And the features bank:
             """
             Feature: Doing great deeds
@@ -18,7 +18,7 @@ Feature: Configure parameters
             """
 
     Scenario: An empty configuration file
-        Given the file ".bddbotrc" contains:
+        Given the file "bddbot.yml" contains:
             """
             """
         And the features bank:
@@ -34,7 +34,7 @@ Feature: Configure parameters
             """
 
     Scenario: Setting a features bank file
-        Given the file ".bddbotrc" contains:
+        Given the file "bddbot.yml" contains:
             """
             bank: banks/goodness.bank
             """
@@ -51,7 +51,7 @@ Feature: Configure parameters
             """
 
     Scenario: Setting multiple features bank files
-        Given the file ".bddbotrc" contains:
+        Given the file "bddbot.yml" contains:
             """
             bank:
                 - banks/goodness-1.bank
@@ -82,7 +82,7 @@ Feature: Configure parameters
             """
 
     Scenario: Searching a directory for feature banks
-        Given the file ".bddbotrc" contains:
+        Given the file "bddbot.yml" contains:
             """
             bank: my-banks
             """
@@ -110,7 +110,7 @@ Feature: Configure parameters
             """
 
     Scenario: Setting the test command
-        Given the file ".bddbotrc" contains:
+        Given the file "bddbot.yml" contains:
             """
             test_command: behave --format=null
             """
@@ -132,7 +132,7 @@ Feature: Configure parameters
             """
 
     Scenario: Setting multiple test commands
-        Given the file ".bddbotrc" contains:
+        Given the file "bddbot.yml" contains:
             """
             test_command:
                 - behave --format=null

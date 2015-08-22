@@ -51,7 +51,7 @@ def test_multiple_options(mock_open):
 @patch("bddbot.config.open", new_callable = MockOpen)
 def test_custom_config_file(mock_open):
     """Test reading from a custom path."""
-    config_path = "/path/to/bddbotrc"
+    config_path = "/path/to/bddbotrc.yml"
     mock_open[config_path].read_data = yaml.dump({})
 
     config = BotConfiguration(config_path)

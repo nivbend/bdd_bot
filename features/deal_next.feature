@@ -229,7 +229,7 @@ Feature: Deal another scenario
                     When we calculate the outcome
                     Then the result is None
             """
-        And the file ".bddbotrc" contains:
+        And the file "bddbot.yml" contains:
             """
             bank:
                 - banks/all.bank

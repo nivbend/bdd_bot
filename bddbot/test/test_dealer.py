@@ -113,7 +113,7 @@ class TestConfiguration(BaseDealerTest):
 
     def test_setting_costum_file(self):
         """Setting a custom configuration file path."""
-        path = "/path/to/bddbotrc"
+        path = "/path/to/bddbotrc.yml"
         self._mock_dealer_functions()
 
         # pylint: disable=unused-variable
