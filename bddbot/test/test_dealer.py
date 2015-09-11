@@ -25,9 +25,7 @@ class BaseDealerTest(object):
     def _mock_dealer_functions(self, default_bank = None):
         """Mock out standard library functions used by the dealer module."""
         self.mocked_open = MockOpen()
-        self.mocked_mkdir.reset_mock()
-        self.mocked_popen.reset_mock()
-        self.mocked_config.reset_mock()
+        self._reset_mocks()
 
         if default_bank:
             self.mocked_open[DEFAULT_BANK_PATH].read_data = default_bank
@@ -61,10 +59,7 @@ class BaseDealerTest(object):
         self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
 
         # Reset mocks.
-        self.mocked_open.reset_mock()
-        self.mocked_mkdir.reset_mock()
-        self.mocked_popen.reset_mock()
-        self.mocked_config.reset_mock()
+        self._reset_mocks()
 
         return dealer
 
@@ -81,12 +76,16 @@ class BaseDealerTest(object):
         self.mocked_config.assert_not_called()
 
         # Reset mocks.
+        self._reset_mocks()
+
+        return dealer
+
+    def _reset_mocks(self):
+        """Reset all mocks."""
         self.mocked_open.reset_mock()
         self.mocked_mkdir.reset_mock()
         self.mocked_popen.reset_mock()
         self.mocked_config.reset_mock()
-
-        return dealer
 
     def _assert_writes(self, chunks, path = DEFAULT_FEATURE_PATH):
         """Verify all calls to write()."""
@@ -451,9 +450,7 @@ class TestDealNext(BaseDealerTest):
         self.mocked_popen.assert_not_called()
         self.mocked_config.assert_not_called()
 
-        self.mocked_mkdir.reset_mock()
-        self.mocked_popen.reset_mock()
-        self.mocked_config.reset_mock()
+        self._reset_mocks()
 
         dealer.deal()
 
