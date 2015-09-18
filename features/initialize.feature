@@ -5,14 +5,14 @@ Feature: Initialize Bot
 
     Scenario: No features bank file
         Given the file "features.bank" doesn't exist
-        When we initialize the bot's state
+        When the bot is loaded
         Then an error saying "no features bank" is raised
-        And the "features" directory isn't created
+        And the "features" directory wasn't created
 
     Scenario: No features in bank
         Given the features bank "banks/default.bank":
             """
             """
-        When we initialize the bot's state
-        And we first deal a scenario
+        When the bot is loaded
+        And the first scenario is dealt
         Then there are no more scenarios to deal

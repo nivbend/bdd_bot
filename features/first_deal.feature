@@ -8,8 +8,8 @@ Feature: Initialize Bot
             """
             Feature: A feature with no scenarios
             """
-        When we first deal a scenario
-        Then the "features/default.feature" file isn't created
+        When the first scenario is dealt
+        Then the "features/default.feature" file wasn't created
 
     Scenario: One feature, one scenario
         Given the features bank "banks/default.bank":
@@ -20,7 +20,7 @@ Feature: Initialize Bot
                     When something happens
                     Then stuff will go down
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: A single feature to test with
@@ -48,9 +48,9 @@ Feature: Initialize Bot
                     Given some quaky preconditions
                     And more preconditions
                     When all the chips have fallen
-                    Then will the fat lasy sing
+                    Then will the fat lady sing
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: A single feature to test with
@@ -83,9 +83,9 @@ Feature: Initialize Bot
                     Given some quaky preconditions
                     And more preconditions
                     When all the chips have fallen
-                    Then will the fat lasy sing
+                    Then will the fat lady sing
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: A single feature to test with
@@ -120,7 +120,7 @@ Feature: Initialize Bot
                     When we only deal up till that scenario
                     Then this scenario isn't written to the feature file
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: A feature with a scenario outline
@@ -150,10 +150,10 @@ Feature: Initialize Bot
                         Duis aute irure dolor in reprehenderit in voluptate velit
                         esse cillum dolore eu fugiat nulla pariatur.
                         \"\"\"
-                    When we print it in Arial
+                    When it is printed in Arial
                     Then graphic designers start twitching
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: A challenging feature
@@ -167,7 +167,7 @@ Feature: Initialize Bot
                         Duis aute irure dolor in reprehenderit in voluptate velit
                         esse cillum dolore eu fugiat nulla pariatur.
                         \"\"\"
-                    When we print it in Arial
+                    When it is printed in Arial
                     Then graphic designers start twitching
             """
 
@@ -185,7 +185,7 @@ Feature: Initialize Bot
                     When you wouldn't BELIEVE what they did
                     Then I can't even!
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: Unable to even
@@ -211,7 +211,7 @@ Feature: Initialize Bot
                     Then we'll "casually" mention there are pubs for that kind of thing
                     And we'll stick around and glare until everyone are back to work
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             @bad @dont_implement_this_guys
@@ -231,7 +231,7 @@ Feature: Initialize Bot
                     Given we have San Marzano tomatoes
                     And we have mozzarella di bufala Campana
                     When we put it all together
-                    We speak-a lik-a Italians!
+                    Then We speak-a lik-a Italians!
 
                 @vegetarian @vegan
                 Scenario: Meatless Monday
@@ -239,9 +239,9 @@ Feature: Initialize Bot
                     And we have tomatoes
                     But we don't have any dairy products
                     When we put it all together
-                    We have ourselves a pizza without any meat
+                    Then We have ourselves a pizza without any meat
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: Making pizza
@@ -249,5 +249,5 @@ Feature: Initialize Bot
                     Given we have San Marzano tomatoes
                     And we have mozzarella di bufala Campana
                     When we put it all together
-                    We speak-a lik-a Italians!
+                    Then We speak-a lik-a Italians!
             """

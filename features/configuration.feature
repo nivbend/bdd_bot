@@ -10,7 +10,7 @@ Feature: Configure parameters
             Feature: Doing great deeds
                 Scenario: Helping children in Africa
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: Doing great deeds
@@ -26,7 +26,7 @@ Feature: Configure parameters
             Feature: Doing great deeds
                 Scenario: Donating clothes to charity
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: Doing great deeds
@@ -43,7 +43,7 @@ Feature: Configure parameters
             Feature: Doing great deeds #2
                 Scenario: Helping an old lady cross the street
             """
-        When we first deal a scenario
+        When the first scenario is dealt
         Then "features/goodness.feature" contains:
             """
             Feature: Doing great deeds #2
@@ -68,8 +68,8 @@ Feature: Configure parameters
                 Scenario: Giving money to the poor
                 Scenario: Organizing a neighberhood fund-raiser
             """
-        And we dealt 1 scenario/s
-        When we deal another scenario
+        And 1 scenario/s were dealt
+        When another scenario is dealt
         Then "features/goodness-1.feature" contains:
             """
             Feature: Volunteering
@@ -96,8 +96,8 @@ Feature: Configure parameters
             Feature: The second feature
                 Scenario: The second scenario
             """
-        And we dealt 1 scenario/s
-        When we deal another scenario
+        And 1 scenario/s were dealt
+        When another scenario is dealt
         Then "my-features/first.feature" contains:
             """
             Feature: The first feature
@@ -120,9 +120,9 @@ Feature: Configure parameters
                 Scenario: Feeding the homeless
                 Scenario: Helping children in Africa
             """
-        And the directory "features/steps" exists
-        And we dealt 1 scenario/s
-        When we deal another scenario
+        And a directory "features/steps"
+        And 1 scenario/s were dealt
+        When another scenario is dealt
         Then the command "behave --format=null" is executed
         And "features/default.feature" contains:
             """
@@ -144,9 +144,9 @@ Feature: Configure parameters
                 Scenario: Feeding the homeless
                 Scenario: Helping children in Africa
             """
-        And the directory "features/steps" exists
-        And we dealt 1 scenario/s
-        When we deal another scenario
+        And a directory "features/steps"
+        And 1 scenario/s were dealt
+        When another scenario is dealt
         Then the command "behave --format=null" is executed
         And the command "echo YAY" is executed
         And "features/default.feature" contains:
