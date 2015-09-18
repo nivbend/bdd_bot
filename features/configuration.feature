@@ -5,13 +5,13 @@ Feature: Configure parameters
 
     Scenario: No configuration file
         Given the file "bddbot.yml" doesn't exist
-        And the features bank:
+        And the features bank "banks/default.bank":
             """
             Feature: Doing great deeds
                 Scenario: Helping children in Africa
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: Doing great deeds
                 Scenario: Helping children in Africa
@@ -21,13 +21,13 @@ Feature: Configure parameters
         Given the file "bddbot.yml" contains:
             """
             """
-        And the features bank:
+        And the features bank "banks/default.bank":
             """
             Feature: Doing great deeds
                 Scenario: Donating clothes to charity
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: Doing great deeds
                 Scenario: Donating clothes to charity
@@ -114,7 +114,7 @@ Feature: Configure parameters
             """
             test_command: behave --format=null
             """
-        And the features bank:
+        And the features bank "banks/default.bank":
             """
             Feature: Doing great deeds #3
                 Scenario: Feeding the homeless
@@ -124,7 +124,7 @@ Feature: Configure parameters
         And we dealt 1 scenario/s
         When we deal another scenario
         Then the command "behave --format=null" is executed
-        And "features/all.feature" contains:
+        And "features/default.feature" contains:
             """
             Feature: Doing great deeds #3
                 Scenario: Feeding the homeless
@@ -138,7 +138,7 @@ Feature: Configure parameters
                 - behave --format=null
                 - echo YAY
             """
-        And the features bank:
+        And the features bank "banks/default.bank":
             """
             Feature: Doing great deeds #3
                 Scenario: Feeding the homeless
@@ -149,7 +149,7 @@ Feature: Configure parameters
         When we deal another scenario
         Then the command "behave --format=null" is executed
         And the command "echo YAY" is executed
-        And "features/all.feature" contains:
+        And "features/default.feature" contains:
             """
             Feature: Doing great deeds #3
                 Scenario: Feeding the homeless

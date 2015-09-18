@@ -2,9 +2,8 @@
 
 from behave import given, when, then
 from os.path import isdir, isfile
-from nose.tools import assert_false, assert_is_none
+from nose.tools import assert_true, assert_false, assert_is_none
 from bddbot.dealer import Dealer
-from bddbot.config import DEFAULT_BANK_PATH
 from bddbot.errors import BotError
 
 @given("the file \"(?P<filename>.+)\" doesn't exist")
@@ -12,11 +11,9 @@ def a_repository_without_a_features_bank(context, filename):
     # pylint: disable=unused-argument
     assert not isfile(filename)
 
-@given("the features bank(?: \"(?P<filename>.+)\")?")
+@given("the features bank \"(?P<filename>.+)\"")
 def a_features_bank(context, filename):
-    if not filename:
-        filename = DEFAULT_BANK_PATH
-
+    assert_true(filename.endswith(".bank"))
     write_to_file(context, filename)
 
 @given("the file \"(?P<filename>.+)\" contains")

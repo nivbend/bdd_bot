@@ -4,7 +4,7 @@ Feature: Deal another scenario
     I want to be dealt a new scenario when all previous scenarios were implemented
 
     Background: One scenario was already dealt
-        Given the features bank:
+        Given the features bank "banks/basic.bank":
             """
             Feature: Basic calculator operations
                 Scenario: Adding
@@ -74,7 +74,7 @@ Feature: Deal another scenario
             """
         And we dealt 1 scenario/s
         When we deal another scenario
-        Then "features/all.feature" contains:
+        Then "features/basic.feature" contains:
             """
             Feature: Basic calculator operations
                 Scenario: Adding
@@ -94,7 +94,7 @@ Feature: Deal another scenario
             """
         And we dealt 1 scenario/s
         When we deal another scenario
-        Then "features/all.feature" contains:
+        Then "features/basic.feature" contains:
             """
             Feature: Basic calculator operations
                 Scenario: Adding
@@ -126,7 +126,7 @@ Feature: Deal another scenario
             """
         And we dealt 3 scenario/s
         When we deal another scenario
-        Then "features/all.feature" contains:
+        Then "features/basic.feature" contains:
             """
             Feature: Basic calculator operations
                 Scenario: Adding
@@ -173,7 +173,7 @@ Feature: Deal another scenario
             """
         And we dealt 4 scenario/s
         When we deal another scenario
-        Then "features/all.feature" contains:
+        Then "features/basic.feature" contains:
             """
             Feature: Basic calculator operations
                 Scenario: Adding
@@ -219,7 +219,7 @@ Feature: Deal another scenario
             def calculate(value_1, operator, value_2):
                 return OPERATIONS[operator](value_1, value_2)
             """
-        And the file "banks/edge_cases.bank" contains:
+        And the features bank "banks/edge_cases.bank":
             """
             Feature: Edge cases
                 Scenario: Dividing by zero
@@ -232,12 +232,12 @@ Feature: Deal another scenario
         And the file "bddbot.yml" contains:
             """
             bank:
-                - banks/all.bank
+                - banks/basic.bank
                 - banks/edge_cases.bank
             """
         And we dealt 4 scenario/s
         When we deal another scenario
-        Then "features/all.feature" contains:
+        Then "features/basic.feature" contains:
             """
             Feature: Basic calculator operations
                 Scenario: Adding

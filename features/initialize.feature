@@ -10,7 +10,7 @@ Feature: Initialize Bot
         And the "features" directory isn't created
 
     Scenario: No features in bank
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             """
         When we initialize the bot's state

@@ -4,15 +4,15 @@ Feature: Initialize Bot
     I want to deal the first scenario in a feature file
 
     Scenario: One feature, no scenarios
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             Feature: A feature with no scenarios
             """
         When we first deal a scenario
-        Then the "features/all.feature" file isn't created
+        Then the "features/default.feature" file isn't created
 
     Scenario: One feature, one scenario
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             Feature: A single feature to test with
                 Scenario: First scenario
@@ -21,7 +21,7 @@ Feature: Initialize Bot
                     Then stuff will go down
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: A single feature to test with
                 Scenario: First scenario
@@ -31,7 +31,7 @@ Feature: Initialize Bot
             """
 
     Scenario: One feature, three scenarios
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             Feature: A single feature to test with
                 Scenario: First scenario
@@ -51,7 +51,7 @@ Feature: Initialize Bot
                     Then will the fat lasy sing
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: A single feature to test with
                 Scenario: First scenario
@@ -61,7 +61,7 @@ Feature: Initialize Bot
             """
 
     Scenario: A Feature with background
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             Feature: A single feature to test with
 
@@ -86,7 +86,7 @@ Feature: Initialize Bot
                     Then will the fat lasy sing
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: A single feature to test with
 
@@ -101,7 +101,7 @@ Feature: Initialize Bot
             """
 
     Scenario: Scenario outline
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             Feature: A feature with a scenario outline
                 Scenario Outline: A general test case
@@ -121,7 +121,7 @@ Feature: Initialize Bot
                     Then this scenario isn't written to the feature file
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: A feature with a scenario outline
                 Scenario Outline: A general test case
@@ -137,7 +137,7 @@ Feature: Initialize Bot
             """
 
     Scenario: Scenarios with multiline texts
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             Feature: A challenging feature
                 Scenario: The troublesome scenario
@@ -154,7 +154,7 @@ Feature: Initialize Bot
                     Then graphic designers start twitching
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: A challenging feature
                 Scenario: The troublesome scenario
@@ -172,7 +172,7 @@ Feature: Initialize Bot
             """
 
     Scenario: Steps with data tables
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             Feature: Unable to even
                 Scenario: The MOST AWEFUL thing happened
@@ -186,7 +186,7 @@ Feature: Initialize Bot
                     Then I can't even!
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: Unable to even
                 Scenario: The MOST AWEFUL thing happened
@@ -201,7 +201,7 @@ Feature: Initialize Bot
             """
 
     Scenario: A feature with tags
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             @bad @dont_implement_this_guys
             Feature: Being a party-pooper
@@ -212,7 +212,7 @@ Feature: Initialize Bot
                     And we'll stick around and glare until everyone are back to work
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             @bad @dont_implement_this_guys
             Feature: Being a party-pooper
@@ -224,7 +224,7 @@ Feature: Initialize Bot
             """
 
     Scenario: A scenario with tags
-        Given the features bank:
+        Given the features bank "banks/default.bank":
             """
             Feature: Making pizza
                 Scenario: Neapolitan
@@ -242,7 +242,7 @@ Feature: Initialize Bot
                     We have ourselves a pizza without any meat
             """
         When we first deal a scenario
-        Then "features/all.feature" contains:
+        Then "features/default.feature" contains:
             """
             Feature: Making pizza
                 Scenario: Neapolitan
