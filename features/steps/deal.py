@@ -1,8 +1,9 @@
 # pylint: disable=missing-docstring, no-name-in-module, invalid-name
 
 from behave import given, when, then
-from nose.tools import assert_true, assert_equal, assert_is_none, assert_is_not_none, assert_greater
-from bddbot.dealer import Dealer
+from nose.tools import assert_true, assert_equal, assert_is_none, assert_is_not_none
+from nose.tools import assert_in, assert_greater
+from bddbot.dealer import Dealer, STATE_PATH
 from bddbot.errors import BotError
 
 @given(r"(?P<count>[1-9][0-9]*) scenario/s were dealt")
@@ -23,6 +24,16 @@ def load_dealer(context):
         context.dealer.load()
     except BotError as error:
         context.error = error
+
+@when(r"the bot is restarted")
+def restart_the_bot(context):
+    assert_is_not_none(context.dealer)
+    context.dealer = Dealer()
+
+@when(r"the bot's state is saved")
+def save_state(context):
+    context.dealer.save()
+    assert_in(STATE_PATH, context.sandbox.actual())
 
 @when(r"the first scenario is dealt")
 def first_scenario_is_dealt(context):

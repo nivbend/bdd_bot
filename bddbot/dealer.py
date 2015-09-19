@@ -11,9 +11,12 @@ from os.path import dirname, isdir, join
 from os import mkdir, getcwd, listdir
 from subprocess import Popen, PIPE
 from collections import OrderedDict
+import pickle
 from .bank import Bank
 from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
 from .errors import BotError
+
+STATE_PATH = ".bdd-dealer"
 
 class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented."""
@@ -23,10 +26,23 @@ class Dealer(object):
         self.__is_done = False
         self.__banks = OrderedDict()
 
+        try:
+            with open(STATE_PATH, "rb") as state:
+                self.__banks = pickle.load(state)
+        except IOError:
+            pass
+        else:
+            self.__is_loaded = True
+
     @property
     def is_done(self):
         """Return True if no more scenarios are left to deal."""
         return all(bank.is_done() for bank in self.__banks.itervalues())
+
+    def save(self):
+        """Save the bot's state to file."""
+        with open(STATE_PATH, "wb") as state:
+            pickle.dump(self.__banks, state)
 
     def load(self):
         """Load a feature from the bank."""
