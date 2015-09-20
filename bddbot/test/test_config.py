@@ -5,7 +5,7 @@ from nose.tools import assert_equal
 from mock import patch
 from mock_open import MockOpen
 from bddbot.config import BotConfiguration
-from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_BANK_PATH, DEFAULT_TEST_COMMAND
+from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
 
 @patch("bddbot.config.open", new_callable = MockOpen)
 def test_no_config_file(mock_open):
@@ -14,10 +14,10 @@ def test_no_config_file(mock_open):
 
     config = BotConfiguration()
 
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
     mock_open[DEFAULT_CONFIG_FILENAME].read.assert_not_called()
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
-    assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
+    assert_equal([DEFAULT_BANK_DIRECTORY, ], list(config.bank))
 
 @patch("bddbot.config.open", new_callable = MockOpen)
 def test_empty_config_file(mock_open):
@@ -26,10 +26,10 @@ def test_empty_config_file(mock_open):
 
     config = BotConfiguration()
 
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
     mock_open[DEFAULT_CONFIG_FILENAME].read.assert_called_once_with()
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
-    assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
+    assert_equal([DEFAULT_BANK_DIRECTORY, ], list(config.bank))
 
 @patch("bddbot.config.open", new_callable = MockOpen)
 def test_multiple_options(mock_open):
@@ -43,7 +43,7 @@ def test_multiple_options(mock_open):
 
     config = BotConfiguration()
 
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
     mock_open[DEFAULT_CONFIG_FILENAME].read.assert_called_once_with()
     assert_equal([test_command, ], list(config.test_commands))
     assert_equal([bank_path, ], list(config.bank))
@@ -56,18 +56,18 @@ def test_custom_config_file(mock_open):
 
     config = BotConfiguration(config_path)
 
-    mock_open.assert_called_once_with(config_path, "rb")
+    mock_open.assert_called_once_with(config_path, "r")
     mock_open[config_path].read.assert_called_once_with()
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
-    assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
+    assert_equal([DEFAULT_BANK_DIRECTORY, ], list(config.bank))
 
 class TestBankPath(object):
     # pylint: disable=too-few-public-methods
     """Test setting the bank path/s."""
     CASES = [
-        (None,                                  [DEFAULT_BANK_PATH, ]),
-        ("",                                    [DEFAULT_BANK_PATH, ]),
-        ([],                                    [DEFAULT_BANK_PATH, ]),
+        (None,                                  [DEFAULT_BANK_DIRECTORY, ]),
+        ("",                                    [DEFAULT_BANK_DIRECTORY, ]),
+        ([],                                    [DEFAULT_BANK_DIRECTORY, ]),
         ("/path/to/main.bank",                  ["/path/to/main.bank", ]),
         (["banks/single-file.bank", ],          ["banks/single-file.bank", ]),
         (["banks/1.bank", "banks/2.bank", ],    ["banks/1.bank", "banks/2.bank", ]),
@@ -88,7 +88,7 @@ class TestBankPath(object):
 
         config = BotConfiguration()
 
-        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
         mock_open[DEFAULT_CONFIG_FILENAME].read.assert_called_once_with()
         assert_equal(expected_paths, list(config.bank))
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
@@ -118,7 +118,7 @@ class TestBDDTestCommands(object):
 
         config = BotConfiguration()
 
-        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
         mock_open[DEFAULT_CONFIG_FILENAME].read.assert_called_once_with()
         assert_equal(expected_commands, list(config.test_commands))
-        assert_equal([DEFAULT_BANK_PATH, ], list(config.bank))
+        assert_equal([DEFAULT_BANK_DIRECTORY, ], list(config.bank))

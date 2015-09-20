@@ -3,7 +3,7 @@
 import yaml
 
 DEFAULT_CONFIG_FILENAME = "bddbot.yml"
-DEFAULT_BANK_PATH = "banks/all.bank"
+DEFAULT_BANK_DIRECTORY = "banks"
 DEFAULT_TEST_COMMAND = "behave"
 
 class BotConfiguration(object):
@@ -13,7 +13,7 @@ class BotConfiguration(object):
             filename = DEFAULT_CONFIG_FILENAME
 
         try:
-            with open(filename, "rb") as config:
+            with open(filename, "r") as config:
                 contents = config.read()
             self.__parameters = yaml.load(contents)
         except IOError:
@@ -25,10 +25,10 @@ class BotConfiguration(object):
     @property
     def bank(self):
         """Return the features bank's path."""
-        value = self.__parameters.get("bank", DEFAULT_BANK_PATH)
+        value = self.__parameters.get("bank", DEFAULT_BANK_DIRECTORY)
 
         if not value:
-            value = DEFAULT_BANK_PATH
+            value = DEFAULT_BANK_DIRECTORY
 
         if isinstance(value, str):
             yield value

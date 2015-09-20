@@ -18,7 +18,7 @@ setup(
     packages = ["bddbot", ],
     install_requires = [
         "PyYAML",
-        "mock-open",
+        "mock-open >= 1.2.2",
     ],
     classifiers = [
         "Development Status :: 1 - Planning",
