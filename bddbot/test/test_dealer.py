@@ -88,11 +88,11 @@ class BaseDealerTest(object):
             mocked_isdir.assert_any_call(bank)
 
             if paths is None:
-                self.mocked_open.assert_any_call(bank, "rb")
+                self.mocked_open.assert_any_call(bank, "r")
             else:
                 mocked_listdir.assert_any_call(bank)
                 for path in paths:
-                    self.mocked_open.assert_any_call(join(bank, path), "rb")
+                    self.mocked_open.assert_any_call(join(bank, path), "r")
                     self.mocked_open[join(bank, path)].read.assert_called_once_with()
 
         # Verify the rest of the mocks.
@@ -122,7 +122,7 @@ class BaseDealerTest(object):
 
         # If feature is specified, simulate the first deal from the features bank.
         if feature:
-            self.mocked_open.assert_called_once_with(path, "wb")
+            self.mocked_open.assert_called_once_with(path, "w")
             self._assert_writes(["", feature + "\n", scenario, ], path = path)
             self.mocked_mkdir.assert_called_once_with(dirname(path))
             self.mocked_popen.assert_not_called()
@@ -224,7 +224,7 @@ class TestConfiguration(BaseDealerTest):
         mocked_isdir.assert_called_once_with(bank_directory_path)
         mocked_listdir.assert_called_once_with(bank_directory_path)
         assert_equal(
-            [call(STATE_PATH, "rb"), call(bank_path_1, "rb"), call(bank_path_2, "rb"), ],
+            [call(STATE_PATH, "rb"), call(bank_path_1, "r"), call(bank_path_2, "r"), ],
             self.mocked_open.call_args_list)
         self.mocked_open[bank_path_1].read.assert_called_once_with()
         self.mocked_open[bank_path_2].read.assert_called_once_with()
@@ -279,7 +279,7 @@ class TestLoading(BaseDealerTest):
 
         assert_true(dealer.is_done)
         assert_in("no features bank", error_context.exception.message.lower())
-        self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "rb")
+        self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "r")
 
     def test_successful_call(self):
         """A successful call to load() should read from the bank file."""
@@ -287,7 +287,7 @@ class TestLoading(BaseDealerTest):
         dealer.load()
 
         assert_false(dealer.is_done)
-        self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "rb")
+        self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "r")
 
     def test_call_load_twice(self):
         """Calling load() twice only reads the features bank once."""
@@ -296,7 +296,7 @@ class TestLoading(BaseDealerTest):
         dealer.load()
 
         assert_false(dealer.is_done)
-        self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "rb")
+        self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "r")
 
 class TestDealFirst(BaseDealerTest):
     """Test dealing the first scenario."""
@@ -318,7 +318,7 @@ class TestDealFirst(BaseDealerTest):
         # Couldn't open file for writing, so obviously no writes were perfomed.
         assert_false(dealer.is_done)
         assert_in("couldn't write", error_context.exception.message.lower())
-        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "wb")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "w")
         self._assert_writes([])
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 
@@ -334,7 +334,7 @@ class TestDealFirst(BaseDealerTest):
         # First call to write() raised an IOError which was caught and translated.
         assert_false(dealer.is_done)
         assert_in("couldn't write", error_context.exception.message.lower())
-        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "wb")
+        self.mocked_open.assert_called_once_with(DEFAULT_FEATURE_PATH, "w")
         self._assert_writes([ANY, ])
         self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
 

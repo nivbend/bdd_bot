@@ -102,7 +102,7 @@ class Dealer(object):
             output_path += ".feature"
 
         try:
-            with open(path, "rb") as bank_input:
+            with open(path, "r") as bank_input:
                 self.__banks[output_path] = Bank(bank_input.read())
         except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
@@ -137,7 +137,7 @@ class Dealer(object):
             pass
 
         try:
-            with open(path, "wb") as features:
+            with open(path, "w") as features:
                 features.write(bank.header)
                 features.write(bank.feature)
                 features.write(bank.get_next_scenario())

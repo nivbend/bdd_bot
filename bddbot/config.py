@@ -13,7 +13,7 @@ class BotConfiguration(object):
             filename = DEFAULT_CONFIG_FILENAME
 
         try:
-            with open(filename, "rb") as config:
+            with open(filename, "r") as config:
                 contents = config.read()
             self.__parameters = yaml.load(contents)
         except IOError:

@@ -14,7 +14,7 @@ def test_no_config_file(mock_open):
 
     config = BotConfiguration()
 
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
     mock_open[DEFAULT_CONFIG_FILENAME].read.assert_not_called()
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
     assert_equal([DEFAULT_BANK_DIRECTORY, ], list(config.bank))
@@ -26,7 +26,7 @@ def test_empty_config_file(mock_open):
 
     config = BotConfiguration()
 
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
     mock_open[DEFAULT_CONFIG_FILENAME].read.assert_called_once_with()
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
     assert_equal([DEFAULT_BANK_DIRECTORY, ], list(config.bank))
@@ -43,7 +43,7 @@ def test_multiple_options(mock_open):
 
     config = BotConfiguration()
 
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
     mock_open[DEFAULT_CONFIG_FILENAME].read.assert_called_once_with()
     assert_equal([test_command, ], list(config.test_commands))
     assert_equal([bank_path, ], list(config.bank))
@@ -56,7 +56,7 @@ def test_custom_config_file(mock_open):
 
     config = BotConfiguration(config_path)
 
-    mock_open.assert_called_once_with(config_path, "rb")
+    mock_open.assert_called_once_with(config_path, "r")
     mock_open[config_path].read.assert_called_once_with()
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
     assert_equal([DEFAULT_BANK_DIRECTORY, ], list(config.bank))
@@ -88,7 +88,7 @@ class TestBankPath(object):
 
         config = BotConfiguration()
 
-        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
         mock_open[DEFAULT_CONFIG_FILENAME].read.assert_called_once_with()
         assert_equal(expected_paths, list(config.bank))
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], list(config.test_commands))
@@ -118,7 +118,7 @@ class TestBDDTestCommands(object):
 
         config = BotConfiguration()
 
-        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "rb")
+        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
         mock_open[DEFAULT_CONFIG_FILENAME].read.assert_called_once_with()
         assert_equal(expected_commands, list(config.test_commands))
         assert_equal([DEFAULT_BANK_DIRECTORY, ], list(config.bank))
