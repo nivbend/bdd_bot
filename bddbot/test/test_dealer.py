@@ -473,6 +473,10 @@ class TestPersistency(BaseDealerTest):
             SCENARIO_2_2,
             ])
 
+    def teardown(self):
+        # pylint: disable=no-self-use
+        patch.stopall()
+
     def test_creation(self):
         """Test creation without a state file and a call to save()."""
         self.mocked_open[STATE_PATH].side_effect = IOError()
