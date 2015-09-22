@@ -37,6 +37,9 @@ class Dealer(object):
     @property
     def is_done(self):
         """Return True if no more scenarios are left to deal."""
+        if not self.__is_loaded:
+            return False
+
         return all(bank.is_done() for bank in self.__banks.itervalues())
 
     def save(self):

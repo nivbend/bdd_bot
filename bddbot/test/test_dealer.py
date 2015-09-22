@@ -274,7 +274,7 @@ class TestLoading(BaseDealerTest):
         with assert_raises(BotError) as error_context:
             dealer.load()
 
-        assert_true(dealer.is_done)
+        assert_false(dealer.is_done)
         assert_in("no features bank", error_context.exception.message.lower())
         self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "r")
 
