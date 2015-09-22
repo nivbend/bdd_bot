@@ -57,6 +57,7 @@ Feature: Configure parameters
                 - banks/goodness-1.bank
                 - banks/goodness-2.bank
             """
+        And a directory "features/steps"
         And the features bank "banks/goodness-1.bank":
             """
             Feature: Volunteering
@@ -85,7 +86,9 @@ Feature: Configure parameters
         Given the file "bddbot.yml" contains:
             """
             bank: my-banks
+            test_command: behave my-features
             """
+        And a directory "my-features/steps"
         And the features bank "my-banks/first.bank":
             """
             Feature: The first feature

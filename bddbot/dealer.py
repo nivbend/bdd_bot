@@ -70,6 +70,11 @@ class Dealer(object):
         if not self.__is_loaded:
             self.load()
 
+        # Unless it's the first scenario to be dealt, test all scenarios so far.
+        if not all(bank.is_fresh() for bank in self.__banks.itervalues()):
+            if not self._are_tests_passing():
+                raise BotError("Can't deal while there are unimplemented scenarios")
+
         # Find the first bank that still has scenarios to deal.
         (path, current_bank) = next(
             ((path, bank) for (path, bank) in self.__banks.iteritems() if not bank.is_done()),
@@ -81,10 +86,8 @@ class Dealer(object):
 
         if current_bank.is_fresh():
             self._deal_first(path, current_bank)
-        elif self._are_tests_passing():
-            self._deal_another(path, current_bank)
         else:
-            raise BotError("Can't deal while there are unimplemented scenarios")
+            self._deal_another(path, current_bank)
 
     def _load_directory(self, path):
         """Load all bank files under a given directory."""

@@ -109,14 +109,11 @@ class BaseDealerTest(object):
         """Simulate dealing a scenario and verify success.
 
         If `feature` is specified, simulate the first time a scenario is dealt from
-        the features bank. Otherwise, simulate a consecutive deal from a previous bank
-        and return the commands passed to `Popen()` to verify outside of this function.
-        """
-        popen_calls = None
+        the features bank. Otherwise, simulate a consecutive deal from a previous bank.
 
-        # On consecutive deals, assume test commands pass.
-        if not feature:
-            self.mocked_popen.return_value.returncode = 0
+        Return the commands passed to `Popen()` to verify outside of this function.
+        """
+        self.mocked_popen.return_value.returncode = 0
 
         dealer.deal()
 
@@ -125,7 +122,6 @@ class BaseDealerTest(object):
             self.mocked_open.assert_called_once_with(path, "w")
             self._assert_writes(["", feature + "\n", scenario, ], path = path)
             self.mocked_mkdir.assert_called_once_with(dirname(path))
-            self.mocked_popen.assert_not_called()
 
         # If feature isn't specified, simulate a consecutive deal.
         # Note that calls to Popen should be verified outside of this function in this case.
@@ -134,11 +130,11 @@ class BaseDealerTest(object):
             self._assert_writes([scenario], path = path)
             self.mocked_mkdir.assert_not_called()
 
-            # We return the commands because we reset the mocks at the end of the function.
-            # The stdout/stderr values aren't important, we only care about the commands.
-            popen_calls = [command for ((command, ), _) in self.mocked_popen.call_args_list]
-
         self.mocked_config.assert_not_called()
+
+        # We return the commands because we reset the mocks at the end of the function.
+        # The stdout/stderr values aren't important, we only care about the commands.
+        popen_calls = [command for ((command, ), _) in self.mocked_popen.call_args_list]
 
         # Reset mocks.
         self._reset_mocks()
@@ -240,7 +236,8 @@ class TestConfiguration(BaseDealerTest):
         self._mock_dealer_functions("\n".join([FEATURE_1, SCENARIO_1_1, SCENARIO_1_2, ]))
 
         dealer = self._load_dealer()
-        self._deal(dealer, FEATURE_1, SCENARIO_1_1 + "\n")
+        popen_calls = self._deal(dealer, FEATURE_1, SCENARIO_1_1 + "\n")
+        assert_equal([], popen_calls)
 
         self.mocked_popen.return_value.returncode = 0
         self.mocked_config.return_value.test_commands = [test_command_1, test_command_2, ]
@@ -343,7 +340,8 @@ class TestDealFirst(BaseDealerTest):
         self._mock_dealer_functions("\n".join([FEATURE_1, SCENARIO_1_1, SCENARIO_1_2, ]))
         dealer = self._load_dealer()
 
-        self._deal(dealer, FEATURE_1, SCENARIO_1_1 + "\n")
+        popen_calls = self._deal(dealer, FEATURE_1, SCENARIO_1_1 + "\n")
+        assert_equal([], popen_calls)
 
     def test_empty_features_bank(self):
         """Dealing from an empty feature file should give the 'done' message."""
@@ -390,14 +388,16 @@ class TestDealNext(BaseDealerTest):
         self._mock_dealer_functions("\n".join([FEATURE_1, SCENARIO_1_1, ]))
 
         dealer = self._load_dealer()
-        self._deal(dealer, FEATURE_1, SCENARIO_1_1)
+        popen_calls = self._deal(dealer, FEATURE_1, SCENARIO_1_1)
+        assert_equal([], popen_calls)
 
         dealer.deal()
 
         assert_true(dealer.is_done)
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
-        self.mocked_popen.assert_not_called()
+        self.mocked_popen.assert_called_once_with(
+            DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
 
     def test_should_not_deal_another(self):
         """If a scenario fails, don't deal another scenario."""
@@ -436,7 +436,36 @@ class TestDealNext(BaseDealerTest):
         self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
         self.mocked_popen.return_value.wait.assert_called_once_with()
 
-    def test_dealing_from_two_banks(self):
+    def test_should_not_from_second_bank(self):
+        """If the first bank isn't done, do not deal from the second bank."""
+        bank_path_1 = join(DEFAULT_BANK_DIRECTORY, "first.bank")
+        bank_path_2 = join(DEFAULT_BANK_DIRECTORY, "second.bank")
+        feature_path_1 = bank_path_1.replace("bank", "feature")
+
+        self._mock_dealer_functions()
+        self.mocked_open[bank_path_1].read_data = "\n".join([FEATURE_1, SCENARIO_1_1, ])
+        self.mocked_open[bank_path_2].read_data = "\n".join([FEATURE_2, SCENARIO_2_1, ])
+
+        dealer = self._load_dealer(banks = [
+            (DEFAULT_BANK_DIRECTORY, [basename(bank_path_1), basename(bank_path_2), ]),
+        ])
+
+        self._deal(dealer, FEATURE_1, SCENARIO_1_1, path = feature_path_1)
+        assert_false(dealer.is_done)
+
+        self.mocked_popen.return_value.returncode = -1
+        self.mocked_config.return_value.test_commands = [DEFAULT_TEST_COMMAND.split(), ]
+        with assert_raises(BotError) as error_context:
+            dealer.deal()
+
+        assert_false(dealer.is_done)
+        assert_in("can't deal", error_context.exception.message.lower())
+        self.mocked_open.assert_not_called()
+        self.mocked_mkdir.assert_not_called()
+        self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
+        self.mocked_popen.return_value.wait.assert_called_once_with()
+
+    def test_should_deal_from_second_bank(self):
         """When the first bank is done, deal from the second if available."""
         bank_path_1 = join(DEFAULT_BANK_DIRECTORY, "first.bank")
         bank_path_2 = join(DEFAULT_BANK_DIRECTORY, "second.bank")
@@ -541,8 +570,6 @@ class TestPersistency(BaseDealerTest):
 
         self._reset_mocks()
         popen_calls = self._deal(dealer, None, SCENARIO_1_2)
-        mock_bank.is_done.assert_called_once_with()
-        mock_bank.is_fresh.assert_called_once_with()
         mock_bank.get_next_scenario.assert_called_once_with()
         assert_equal(1, len(popen_calls))
 
