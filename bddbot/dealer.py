@@ -12,7 +12,7 @@ from os import mkdir, getcwd, listdir
 from subprocess import Popen, PIPE
 from collections import OrderedDict
 import pickle
-from .bank import Bank
+from .bank import Bank, ParsingError
 from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
 from .errors import BotError
 
@@ -112,6 +112,10 @@ class Dealer(object):
                 self.__banks[output_path] = Bank(bank_input.read())
         except IOError:
             raise BotError("No features bank in {:s}".format(getcwd()))
+        except ParsingError as parsing_error:
+            # Supply the bank path and re-raise.
+            parsing_error.filename = path
+            raise
 
     def _are_tests_passing(self):
         """Verify that all scenarios were implemented using `behave`.

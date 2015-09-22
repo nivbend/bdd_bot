@@ -8,7 +8,7 @@ from nose.tools import assert_true, assert_false, assert_equal, assert_in, asser
 from mock import patch, call, create_autospec, ANY
 from mock_open import MockOpen
 from bddbot.dealer import Dealer, BotError, STATE_PATH
-from bddbot.bank import Bank
+from bddbot.bank import Bank, ParsingError
 from bddbot.config import BotConfiguration
 from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
 
@@ -293,6 +293,25 @@ class TestLoading(BaseDealerTest):
         dealer.load()
 
         assert_false(dealer.is_done)
+        self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "r")
+
+    def test_parsing_error(self):
+        """Verify the bank raises a parsing error on an invalid file.
+
+        The dealer is in charge of setting the path attribute on the exception.
+        """
+        self.mocked_open[DEFAULT_BANK_PATH].read_data = "\n".join([
+            FEATURE_1,
+            SCENARIO_1_1,
+            "@dangling_tag",
+        ])
+
+        dealer = Dealer()
+        with assert_raises(ParsingError) as error_context:
+            dealer.load()
+
+        assert_equal(DEFAULT_BANK_PATH, error_context.exception.filename)
+        assert_equal("dangling tags", error_context.exception.message.lower())
         self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "r")
 
 class TestDealFirst(BaseDealerTest):
