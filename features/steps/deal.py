@@ -17,7 +17,7 @@ def n_scenarios_were_dealt(context, count):
         context.dealer.deal()
         context.dealt += 1
 
-@when(r"the bot is loaded")
+@when(r"the dealer is loaded")
 def load_dealer(context):
     assert_is_none(context.dealer)
 

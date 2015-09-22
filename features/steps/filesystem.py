@@ -3,21 +3,26 @@
 from behave import given, then
 from os.path import isdir, isfile
 from nose.tools import assert_true, assert_false, assert_multi_line_equal
+from bddbot.config import DEFAULT_CONFIG_FILENAME
 
 @given(r"the file \"(?P<filename>.+)\" doesn't exist")
 def file_does_not_exist(context, filename):
     # pylint: disable=unused-argument
     assert_false(isfile(filename))
 
+@given(r"the file \"(?P<filename>.+)\" contains")
+def the_file_contains(context, filename):
+    assert_false(isfile(filename), "'{:s}' already exist".format(filename))
+    context.sandbox.write(filename, context.text)
+
 @given(r"the features bank \"(?P<filename>.+)\"")
 def the_features_bank_contains(context, filename):
     assert_true(filename.endswith(".bank"))
     the_file_contains(context, filename)
 
-@given(r"the file \"(?P<filename>.+)\" contains")
-def the_file_contains(context, filename):
-    assert_false(isfile(filename), "'{:s}' already exist".format(filename))
-    context.sandbox.write(filename, context.text)
+@given(r"the configuration file")
+def the_configuration_file_contains(context):
+    the_file_contains(context, DEFAULT_CONFIG_FILENAME)
 
 @given(r"a directory \"(?P<directory>.+)\"")
 def directory_exist(context, directory):

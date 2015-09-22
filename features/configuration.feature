@@ -18,7 +18,7 @@ Feature: Configure parameters
             """
 
     Scenario: An empty configuration file
-        Given the file "bddbot.cfg" contains:
+        Given the configuration file:
             """
             """
         And the features bank "banks/default.bank":
@@ -34,7 +34,7 @@ Feature: Configure parameters
             """
 
     Scenario: Setting a features bank file
-        Given the file "bddbot.cfg" contains:
+        Given the configuration file:
             """
             [paths]
             bank: banks/goodness.bank
@@ -52,7 +52,7 @@ Feature: Configure parameters
             """
 
     Scenario: Setting multiple features bank files
-        Given the file "bddbot.cfg" contains:
+        Given the configuration file:
             """
             [paths]
             bank:
@@ -85,7 +85,9 @@ Feature: Configure parameters
             """
 
     Scenario: Searching a directory for feature banks
-        Given the file "bddbot.cfg" contains:
+        # Supplying a directory as a bank path will search all files under it
+        # for '*.bank' files and will load them.
+        Given the configuration file:
             """
             [paths]
             bank: my-banks
@@ -118,7 +120,7 @@ Feature: Configure parameters
             """
 
     Scenario: Setting the test command
-        Given the file "bddbot.cfg" contains:
+        Given the configuration file:
             """
             [test]
             run: behave --format=null
@@ -141,7 +143,8 @@ Feature: Configure parameters
             """
 
     Scenario: Setting multiple test commands
-        Given the file "bddbot.cfg" contains:
+        # Supplying more than one test command will run them consecutively.
+        Given the configuration file:
             """
             [test]
             run:

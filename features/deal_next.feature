@@ -4,6 +4,7 @@ Feature: Deal another scenario
     I want to be dealt a new scenario when all previous scenarios were implemented
 
     Background: One scenario was already dealt
+        # This feature tests the implementation of a calculator module.
         Given the features bank "banks/basic.bank":
             """
             Feature: Basic calculator operations
@@ -66,6 +67,7 @@ Feature: Deal another scenario
             """
 
     Scenario: Last scenario isn't implemented
+        # If tests aren't passing, a new scenario shouldn't be dealt.
         Given the file "calc/calculator.py" contains:
             """
             def calculate(value_1, operator, value_2):
@@ -86,6 +88,7 @@ Feature: Deal another scenario
             """
 
     Scenario: Last scenario implemented properly
+        # If tests aren passing, a new scenario should be dealt.
         Given the file "calc/calculator.py" contains:
             """
             def calculate(value_1, operator, value_2):
@@ -207,6 +210,8 @@ Feature: Deal another scenario
         And there are no more scenarios to deal
 
     Scenario: First feature file wasn't implemented yet
+        # If not all scenarios from the first feature file were implemented, don't
+        # deal from the next feature bank.
         Given the file "calc/calculator.py" contains:
             """
             OPERATIONS = {
@@ -228,7 +233,7 @@ Feature: Deal another scenario
                     When the outcome is calculated
                     Then the result is None
             """
-        And the file "bddbot.cfg" contains:
+        And the configuration file:
             """
             [paths]
             bank:
@@ -293,7 +298,7 @@ Feature: Deal another scenario
                     When the outcome is calculated
                     Then the result is None
             """
-        And the file "bddbot.cfg" contains:
+        And the configuration file:
             """
             [paths]
             bank:
