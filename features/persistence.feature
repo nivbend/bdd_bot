@@ -16,11 +16,12 @@ Feature: Persistent State
             Feature: Reading a book
                 Scenario: In bed
             """
-        And the file "bddbot.yml" contains:
+        And the file "bddbot.cfg" contains:
             """
+            [paths]
             bank:
-                - banks/movie.bank
-                - banks/book.bank
+                banks/movie.bank
+                banks/book.bank
             """
 
     Scenario: Deal another scenario after a restart

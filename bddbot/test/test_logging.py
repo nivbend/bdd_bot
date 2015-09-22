@@ -11,16 +11,6 @@ from bddbot.bank import ParsingError
 from bddbot.config import DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
 from bddbot.errors import BotError
 
-def _create_dealer():
-    """Create a new dealer and return it and the mocked-out logger instance."""
-    with patch("bddbot.dealer.logging.getLogger") as mock_log:
-        dealer = Dealer()
-
-    mock_log.assert_called_once_with(ANY)
-
-    # Return the dealer and the logger objects.
-    return (dealer, mock_log())
-
 BANK_PATH_1 = join(DEFAULT_BANK_DIRECTORY, "first.bank")
 BANK_PATH_2 = join(DEFAULT_BANK_DIRECTORY, "second.bank")
 FEATURE_PATH_1 = BANK_PATH_1.replace("bank", "feature")
@@ -36,6 +26,16 @@ FEATURE_PATH_2 = BANK_PATH_2.replace("bank", "feature")
     "    Scenario: Scenario 2.1",
     "    Scenario: Scenario 2.2",
     "        Some text under the scenario")
+
+def _create_dealer():
+    """Create a new dealer and return it and the mocked-out logger instance."""
+    with patch("bddbot.dealer.logging.getLogger") as mock_log:
+        dealer = Dealer([DEFAULT_BANK_DIRECTORY, ], [DEFAULT_TEST_COMMAND.split(), ])
+
+    mock_log.assert_called_once_with(ANY)
+
+    # Return the dealer and the logger objects.
+    return (dealer, mock_log())
 
 class TestDealerLogging(object):
     """Test and verify log messages during a dealer's execution."""

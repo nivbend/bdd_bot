@@ -14,15 +14,21 @@ from collections import OrderedDict
 import logging
 import pickle
 from .bank import Bank, ParsingError
-from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
+from .config import DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
 from .errors import BotError
 
 STATE_PATH = ".bdd-dealer"
 
 class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented."""
-    def __init__(self, config = DEFAULT_CONFIG_FILENAME):
-        self.__config = BotConfiguration(config)
+    def __init__(self, bank_paths = None, tests = None):
+        if not bank_paths:
+            bank_paths = [DEFAULT_BANK_DIRECTORY, ]
+        if not tests:
+            tests = [DEFAULT_TEST_COMMAND.split(), ]
+
+        self.__bank_paths = bank_paths
+        self.__tests = tests
         self.__is_loaded = False
         self.__is_done = False
         self.__banks = OrderedDict()
@@ -58,7 +64,7 @@ class Dealer(object):
 
         self.__log.debug("Loading banks")
 
-        for path in self.__config.bank:
+        for path in self.__bank_paths:
             if isdir(path):
                 self._load_directory(path)
             else:
@@ -136,7 +142,7 @@ class Dealer(object):
         This is done by calling each testing command (by default, only "behave") in order.
         If any of them fail, the result is False.
         """
-        for command in self.__config.test_commands:
+        for command in self.__tests:
             process = Popen(command, stdout = PIPE, stderr = PIPE)
             (stdout, stderr) = process.communicate()
 

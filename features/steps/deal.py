@@ -4,12 +4,14 @@ from behave import given, when, then
 from nose.tools import assert_true, assert_equal, assert_is_none, assert_is_not_none
 from nose.tools import assert_in, assert_greater
 from bddbot.dealer import Dealer, STATE_PATH
+from bddbot.config import BotConfiguration
 from bddbot.errors import BotError
 
 @given(r"(?P<count>[1-9][0-9]*) scenario/s were dealt")
 def n_scenarios_were_dealt(context, count):
     if not context.dealer:
-        context.dealer = Dealer()
+        config = BotConfiguration()
+        context.dealer = Dealer(config.banks, config.test_commands)
 
     for _ in xrange(int(count)):
         context.dealer.deal()
@@ -18,7 +20,9 @@ def n_scenarios_were_dealt(context, count):
 @when(r"the bot is loaded")
 def load_dealer(context):
     assert_is_none(context.dealer)
-    context.dealer = Dealer()
+
+    config = BotConfiguration()
+    context.dealer = Dealer(config.banks, config.test_commands)
 
     try:
         context.dealer.load()
@@ -28,7 +32,9 @@ def load_dealer(context):
 @when(r"the bot is restarted")
 def restart_the_bot(context):
     assert_is_not_none(context.dealer)
-    context.dealer = Dealer()
+
+    config = BotConfiguration()
+    context.dealer = Dealer(config.banks, config.test_commands)
 
 @when(r"the bot's state is saved")
 def save_state(context):
@@ -40,7 +46,8 @@ def first_scenario_is_dealt(context):
     assert_equal(0, context.dealt)
 
     if not context.dealer:
-        context.dealer = Dealer()
+        config = BotConfiguration()
+        context.dealer = Dealer(config.banks, config.test_commands)
 
     try:
         context.dealer.deal()

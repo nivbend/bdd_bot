@@ -4,7 +4,7 @@ Feature: Configure parameters
     I want to be able to set certain parameters in a configuration file
 
     Scenario: No configuration file
-        Given the file "bddbot.yml" doesn't exist
+        Given the file "bddbot.cfg" doesn't exist
         And the features bank "banks/default.bank":
             """
             Feature: Doing great deeds
@@ -18,7 +18,7 @@ Feature: Configure parameters
             """
 
     Scenario: An empty configuration file
-        Given the file "bddbot.yml" contains:
+        Given the file "bddbot.cfg" contains:
             """
             """
         And the features bank "banks/default.bank":
@@ -34,8 +34,9 @@ Feature: Configure parameters
             """
 
     Scenario: Setting a features bank file
-        Given the file "bddbot.yml" contains:
+        Given the file "bddbot.cfg" contains:
             """
+            [paths]
             bank: banks/goodness.bank
             """
         And the features bank "banks/goodness.bank":
@@ -51,11 +52,12 @@ Feature: Configure parameters
             """
 
     Scenario: Setting multiple features bank files
-        Given the file "bddbot.yml" contains:
+        Given the file "bddbot.cfg" contains:
             """
+            [paths]
             bank:
-                - banks/goodness-1.bank
-                - banks/goodness-2.bank
+                banks/goodness-1.bank
+                banks/goodness-2.bank
             """
         And a directory "features/steps"
         And the features bank "banks/goodness-1.bank":
@@ -83,10 +85,13 @@ Feature: Configure parameters
             """
 
     Scenario: Searching a directory for feature banks
-        Given the file "bddbot.yml" contains:
+        Given the file "bddbot.cfg" contains:
             """
+            [paths]
             bank: my-banks
-            test_command: behave my-features
+
+            [test]
+            run: behave my-features
             """
         And a directory "my-features/steps"
         And the features bank "my-banks/first.bank":
@@ -113,9 +118,10 @@ Feature: Configure parameters
             """
 
     Scenario: Setting the test command
-        Given the file "bddbot.yml" contains:
+        Given the file "bddbot.cfg" contains:
             """
-            test_command: behave --format=null
+            [test]
+            run: behave --format=null
             """
         And the features bank "banks/default.bank":
             """
@@ -135,11 +141,12 @@ Feature: Configure parameters
             """
 
     Scenario: Setting multiple test commands
-        Given the file "bddbot.yml" contains:
+        Given the file "bddbot.cfg" contains:
             """
-            test_command:
-                - behave --format=null
-                - echo YAY
+            [test]
+            run:
+                behave --format=null
+                echo YAY
             """
         And the features bank "banks/default.bank":
             """

@@ -228,11 +228,12 @@ Feature: Deal another scenario
                     When the outcome is calculated
                     Then the result is None
             """
-        And the file "bddbot.yml" contains:
+        And the file "bddbot.cfg" contains:
             """
+            [paths]
             bank:
-                - banks/basic.bank
-                - banks/edge_cases.bank
+                banks/basic.bank
+                banks/edge_cases.bank
             """
         And 4 scenario/s were dealt
         When another scenario is dealt
@@ -292,11 +293,12 @@ Feature: Deal another scenario
                     When the outcome is calculated
                     Then the result is None
             """
-        And the file "bddbot.yml" contains:
+        And the file "bddbot.cfg" contains:
             """
+            [paths]
             bank:
-                - banks/basic.bank
-                - banks/edge_cases.bank
+                banks/basic.bank
+                banks/edge_cases.bank
             """
         And 4 scenario/s were dealt
         When another scenario is dealt

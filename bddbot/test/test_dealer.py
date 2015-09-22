@@ -9,8 +9,7 @@ from mock import patch, call, create_autospec, ANY
 from mock_open import MockOpen
 from bddbot.dealer import Dealer, BotError, STATE_PATH
 from bddbot.bank import Bank, ParsingError
-from bddbot.config import BotConfiguration
-from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
+from bddbot.config import DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
 
 FEATURES_DIRECTORY = "features"
 DEFAULT_BANK_PATH = join(DEFAULT_BANK_DIRECTORY, "default.bank")
@@ -32,7 +31,6 @@ class BaseDealerTest(object):
         self.mocked_open = None
         self.mocked_mkdir = create_autospec(mkdir)
         self.mocked_popen = create_autospec(Popen)
-        self.mocked_config = create_autospec(BotConfiguration)
 
     def _mock_dealer_functions(self, default_bank = None):
         """Mock out standard library functions used by the dealer module."""
@@ -41,21 +39,18 @@ class BaseDealerTest(object):
 
         if default_bank:
             self.mocked_open[DEFAULT_BANK_PATH].read_data = default_bank
-        self.mocked_config.return_value.bank = [DEFAULT_BANK_PATH, ]
-        self.mocked_config.return_value.test_commands = [DEFAULT_TEST_COMMAND.split(), ]
 
         patcher = patch.multiple(
             "bddbot.dealer",
             open = self.mocked_open,
             mkdir = self.mocked_mkdir,
-            Popen = self.mocked_popen,
-            BotConfiguration = self.mocked_config)
+            Popen = self.mocked_popen)
 
         patcher.start()
 
         return patcher
 
-    def _load_dealer(self, banks = None):
+    def _load_dealer(self, banks = None, test_commands = None):
         """Simulate a call to load() and verify success.
 
         The `banks` argument is a list of tuples of bank paths and either None (to
@@ -64,15 +59,17 @@ class BaseDealerTest(object):
         """
         if not banks:
             banks = [(DEFAULT_BANK_DIRECTORY, [basename(DEFAULT_BANK_PATH), ]), ]
+        if not test_commands:
+            test_commands = [DEFAULT_TEST_COMMAND.split(), ]
+
         banks = OrderedDict(banks)
 
         self.mocked_open[STATE_PATH].side_effect = IOError()
-        dealer = Dealer()
+        dealer = Dealer(bank_paths = banks.keys(), tests = test_commands)
         self.mocked_open.assert_any_call(STATE_PATH, "rb")
 
         # Setup and call load().
         self.mocked_open.side_effect = None
-        self.mocked_config.return_value.bank = banks
         mocked_isdir = create_autospec(isdir, side_effect = lambda path: banks[path] is not None)
         mocked_listdir = create_autospec(listdir, side_effect = lambda path: banks[path])
         with patch.multiple("bddbot.dealer", isdir = mocked_isdir, listdir = mocked_listdir):
@@ -98,7 +95,6 @@ class BaseDealerTest(object):
         # Verify the rest of the mocks.
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
 
         # Reset mocks.
         self._reset_mocks()
@@ -131,8 +127,6 @@ class BaseDealerTest(object):
             self._assert_writes([scenario], path = path)
             self.mocked_mkdir.assert_not_called()
 
-        self.mocked_config.assert_not_called()
-
         # We return the commands because we reset the mocks at the end of the function.
         # The stdout/stderr values aren't important, we only care about the commands.
         popen_calls = [command for ((command, ), _) in self.mocked_popen.call_args_list]
@@ -147,7 +141,6 @@ class BaseDealerTest(object):
         self.mocked_open.reset_mock()
         self.mocked_mkdir.reset_mock()
         self.mocked_popen.reset_mock()
-        self.mocked_config.reset_mock()
 
     def _assert_writes(self, chunks, path = DEFAULT_FEATURE_PATH):
         """Verify all calls to write()."""
@@ -172,20 +165,6 @@ class TestConfiguration(BaseDealerTest):
         # pylint: disable=no-self-use
         patch.stopall()
 
-    def test_setting_costum_file(self):
-        """Setting a custom configuration file path."""
-        path = "/path/to/bddbotrc.yml"
-        self._mock_dealer_functions()
-        self.mocked_open[STATE_PATH].side_effect = IOError()
-
-        # pylint: disable=unused-variable
-        dealer = Dealer(config = path)
-
-        self.mocked_open.assert_called_once_with(STATE_PATH, "rb")
-        self.mocked_mkdir.assert_not_called()
-        self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_called_once_with(path)
-
     def test_setting_bank_file_path(self):
         """Set the path to the bank as a single file."""
         for (bank_path, expected_feature_path) in self.BANK_FILE_PATHS:
@@ -206,7 +185,6 @@ class TestConfiguration(BaseDealerTest):
 
         self._mock_dealer_functions()
         self.mocked_open[STATE_PATH].side_effect = IOError()
-        self.mocked_config.return_value.bank = [bank_directory_path, ]
         mocked_isdir = create_autospec(isdir)
         mocked_listdir = create_autospec(listdir, return_value = [
             basename(bank_path_1),
@@ -214,7 +192,7 @@ class TestConfiguration(BaseDealerTest):
             "not_a_bank.txt",
         ])
 
-        dealer = Dealer()
+        dealer = Dealer(bank_paths = [bank_directory_path, ])
         with patch.multiple("bddbot.dealer", isdir = mocked_isdir, listdir = mocked_listdir):
             dealer.load()
 
@@ -227,7 +205,6 @@ class TestConfiguration(BaseDealerTest):
         self.mocked_open[bank_path_2].read.assert_called_once_with()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
 
     def test_setting_test_command(self):
         """Using custom test commands to verify scenarios."""
@@ -236,12 +213,11 @@ class TestConfiguration(BaseDealerTest):
 
         self._mock_dealer_functions("\n".join([FEATURE_1, SCENARIO_1_1, SCENARIO_1_2, ]))
 
-        dealer = self._load_dealer()
+        dealer = self._load_dealer(test_commands = [test_command_1, test_command_2, ])
         popen_calls = self._deal(dealer, FEATURE_1, SCENARIO_1_1 + "\n")
         assert_equal([], popen_calls)
 
         self.mocked_popen.return_value.returncode = 0
-        self.mocked_config.return_value.test_commands = [test_command_1, test_command_2, ]
         popen_calls = self._deal(dealer, None, SCENARIO_1_2)
 
         assert_equal([test_command_1, test_command_2, ], popen_calls)
@@ -258,20 +234,18 @@ class TestLoading(BaseDealerTest):
     def setup(self):
         self._mock_dealer_functions("\n".join([FEATURE_1, SCENARIO_1_1, ]))
         self.mocked_open[STATE_PATH].side_effect = IOError()
-        self.mocked_config.return_value.bank = [DEFAULT_BANK_PATH, ]
 
     def teardown(self):
         patch.stopall()
 
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
 
     def test_no_features_bank_file(self):
         """Catch exception when trying to open a non-existent bank file."""
         self.mocked_open[DEFAULT_BANK_PATH].side_effect = IOError()
 
-        dealer = Dealer()
+        dealer = Dealer(bank_paths = [DEFAULT_BANK_PATH, ])
         with assert_raises(BotError) as error_context:
             dealer.load()
 
@@ -281,7 +255,7 @@ class TestLoading(BaseDealerTest):
 
     def test_successful_call(self):
         """A successful call to load() should read from the bank file."""
-        dealer = Dealer()
+        dealer = Dealer(bank_paths = [DEFAULT_BANK_PATH, ])
         dealer.load()
 
         assert_false(dealer.is_done)
@@ -289,7 +263,7 @@ class TestLoading(BaseDealerTest):
 
     def test_call_load_twice(self):
         """Calling load() twice only reads the features bank once."""
-        dealer = Dealer()
+        dealer = Dealer(bank_paths = [DEFAULT_BANK_PATH, ])
         dealer.load()
         dealer.load()
 
@@ -307,7 +281,7 @@ class TestLoading(BaseDealerTest):
             "@dangling_tag",
         ])
 
-        dealer = Dealer()
+        dealer = Dealer(bank_paths = [DEFAULT_BANK_PATH, ])
         with assert_raises(ParsingError) as error_context:
             dealer.load()
 
@@ -321,7 +295,6 @@ class TestDealFirst(BaseDealerTest):
         patch.stopall()
 
         self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_not_called()
 
     def test_cant_open_features_file_for_writing(self):
         """Capture exceptions in open()."""
@@ -399,9 +372,8 @@ class TestDealFirst(BaseDealerTest):
 class TestDealNext(BaseDealerTest):
     """Test logic and actions when calling deal() continously."""
     def teardown(self):
+        # pylint: disable=no-self-use
         patch.stopall()
-
-        self.mocked_config.assert_not_called()
 
     def test_no_more_scenarios(self):
         """If no more scenarios to deal, mark as done."""
@@ -427,7 +399,6 @@ class TestDealNext(BaseDealerTest):
         self._deal(dealer, FEATURE_1, SCENARIO_1_1 + "\n")
 
         self.mocked_popen.return_value.returncode = -1
-        self.mocked_config.return_value.test_commands = [DEFAULT_TEST_COMMAND.split(), ]
         with assert_raises(BotError) as error_context:
             dealer.deal()
 
@@ -443,7 +414,6 @@ class TestDealNext(BaseDealerTest):
         self._mock_dealer_functions("\n".join([FEATURE_1, SCENARIO_1_1, SCENARIO_1_2, ]))
         dealer = self._load_dealer()
 
-        self.mocked_config.return_value.test_commands = [DEFAULT_TEST_COMMAND.split(), ]
         self._deal(dealer, FEATURE_1, SCENARIO_1_1 + "\n")
 
         self.mocked_popen.return_value.returncode = 0
@@ -474,7 +444,6 @@ class TestDealNext(BaseDealerTest):
         assert_false(dealer.is_done)
 
         self.mocked_popen.return_value.returncode = -1
-        self.mocked_config.return_value.test_commands = [DEFAULT_TEST_COMMAND.split(), ]
         with assert_raises(BotError) as error_context:
             dealer.deal()
 
@@ -535,7 +504,6 @@ class TestPersistency(BaseDealerTest):
         self.mocked_open[STATE_PATH].read.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
 
         self._reset_mocks()
         with patch("bddbot.dealer.pickle.dump") as mocked_dump:
@@ -545,7 +513,6 @@ class TestPersistency(BaseDealerTest):
         mocked_dump.assert_called_once_with({}, ANY)
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_not_called()
 
     def test_save(self):
         """Test saving the bot's state."""
@@ -586,7 +553,6 @@ class TestPersistency(BaseDealerTest):
         mocked_load.assert_called_once_with(ANY)
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_called_once_with(DEFAULT_CONFIG_FILENAME)
 
         self._reset_mocks()
         popen_calls = self._deal(dealer, None, SCENARIO_1_2)
@@ -604,7 +570,6 @@ class TestPersistency(BaseDealerTest):
         mocked_dump.assert_called_once_with(ANY, ANY)
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
-        self.mocked_config.assert_not_called()
 
         # Verify stored banks' states.
         ((banks, _), _) = mocked_dump.call_args

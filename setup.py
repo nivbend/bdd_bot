@@ -17,7 +17,6 @@ setup(
     license = "MIT",
     packages = ["bddbot", ],
     install_requires = [
-        "PyYAML",
         "mock-open >= 1.2.2",
     ],
     classifiers = [
