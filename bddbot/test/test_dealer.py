@@ -114,6 +114,7 @@ class BaseDealerTest(object):
         Return the commands passed to `Popen()` to verify outside of this function.
         """
         self.mocked_popen.return_value.returncode = 0
+        self.mocked_popen.return_value.communicate.return_value = ("", "")
 
         dealer.deal()
 
@@ -435,7 +436,7 @@ class TestDealNext(BaseDealerTest):
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
-        self.mocked_popen.return_value.wait.assert_called_once_with()
+        self.mocked_popen.return_value.communicate.assert_called_once_with()
 
     def test_should_deal_another(self):
         """When all scenarios pass, deal a new scenario."""
@@ -453,7 +454,7 @@ class TestDealNext(BaseDealerTest):
         self._assert_writes([SCENARIO_1_2, ])
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
-        self.mocked_popen.return_value.wait.assert_called_once_with()
+        self.mocked_popen.return_value.communicate.assert_called_once_with()
 
     def test_should_not_from_second_bank(self):
         """If the first bank isn't done, do not deal from the second bank."""
@@ -482,7 +483,7 @@ class TestDealNext(BaseDealerTest):
         self.mocked_open.assert_not_called()
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
-        self.mocked_popen.return_value.wait.assert_called_once_with()
+        self.mocked_popen.return_value.communicate.assert_called_once_with()
 
     def test_should_deal_from_second_bank(self):
         """When the first bank is done, deal from the second if available."""

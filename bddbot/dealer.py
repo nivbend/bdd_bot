@@ -11,6 +11,7 @@ from os.path import dirname, isdir, join
 from os import mkdir, getcwd, listdir
 from subprocess import Popen, PIPE
 from collections import OrderedDict
+import logging
 import pickle
 from .bank import Bank, ParsingError
 from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
@@ -25,9 +26,11 @@ class Dealer(object):
         self.__is_loaded = False
         self.__is_done = False
         self.__banks = OrderedDict()
+        self.__log = logging.getLogger(__name__)
 
         try:
             with open(STATE_PATH, "rb") as state:
+                self.__log.debug("Loading state")
                 self.__banks = pickle.load(state)
         except IOError:
             pass
@@ -44,6 +47,7 @@ class Dealer(object):
 
     def save(self):
         """Save the bot's state to file."""
+        self.__log.debug("Saving state")
         with open(STATE_PATH, "wb") as state:
             pickle.dump(self.__banks, state)
 
@@ -51,6 +55,8 @@ class Dealer(object):
         """Load a feature from the bank."""
         if self.__is_loaded:
             return
+
+        self.__log.debug("Loading banks")
 
         for path in self.__config.bank:
             if isdir(path):
@@ -94,8 +100,10 @@ class Dealer(object):
 
     def _load_directory(self, path):
         """Load all bank files under a given directory."""
+        self.__log.info("Checking bank directory '%s'", path)
         for filename in listdir(path):
             if not filename.endswith(".bank"):
+                self.__log.debug("Skipping non-bank file '%s'", filename)
                 continue
 
             filename = join(path, filename)
@@ -103,6 +111,7 @@ class Dealer(object):
 
     def _load_file(self, path):
         """Load a bank file."""
+        self.__log.info("Loading features bank '%s'", path)
         output_path = path.replace("bank", "feature")
         if not output_path.endswith(".feature"):
             output_path += ".feature"
@@ -115,6 +124,10 @@ class Dealer(object):
         except ParsingError as parsing_error:
             # Supply the bank path and re-raise.
             parsing_error.filename = path
+
+            self.__log.exception(
+                "Parsing error in %s:%d:%s",
+                path, parsing_error.line, parsing_error.filename)
             raise
 
     def _are_tests_passing(self):
@@ -125,40 +138,61 @@ class Dealer(object):
         """
         for command in self.__config.test_commands:
             process = Popen(command, stdout = PIPE, stderr = PIPE)
-            process.wait()
+            (stdout, stderr) = process.communicate()
 
             # pylint: disable=superfluous-parens
             if (0 != process.returncode):
+                self.__log.warning(
+                    "\n".join(["Test '%s' failed", "stdout = %s", "stderr = %s", ]),
+                    " ".join(command), stdout, stderr)
                 return False
 
+        self.__log.info("All tests are passing")
         return True
 
-    @staticmethod
-    def _deal_first(path, bank):
+    def _deal_first(self, path, bank):
         """Deal the very first scenario in the bank.
 
         This will create the feature file and fill it with the feature's text,
         background, etc. It implicitly calls load().
         """
+        self.__log.info("Dealing first scenario in '%s'", path)
+
         try:
             mkdir(dirname(path))
+            self.__log.debug("Created features directory '%s'", dirname(path))
         except OSError:
             # Directory exists.
             pass
 
         try:
             with open(path, "w") as features:
+                self.__log.info("Writing header from '%s': '%s'", path, bank.header.rstrip("\n"))
                 features.write(bank.header)
+
+                self.__log.info("Writing feature from '%s': '%s'", path, bank.feature.rstrip("\n"))
                 features.write(bank.feature)
-                features.write(bank.get_next_scenario())
+
+                self.__write_next_scenario(features, path, bank)
         except IOError:
             raise BotError("Couldn't write to '{:s}'".format(path))
 
-    @staticmethod
-    def _deal_another(path, bank):
+    def _deal_another(self, path, bank):
         """Deal a new scenario (not the first one)."""
+        self.__log.info("Dealing scenario in '%s'", path)
+
         try:
             with open(path, "ab") as features:
-                features.write(bank.get_next_scenario())
+                self.__write_next_scenario(features, path, bank)
         except IOError:
             raise BotError("Couldn't write to '{:s}'".format(path))
+
+    def __write_next_scenario(self, stream, path, bank):
+        """Write the next scenario from the bank to the stream."""
+        scenario = bank.get_next_scenario()
+
+        self.__log.info(
+            "Writing scenario from '%s': '%s'",
+            path, scenario.splitlines()[0].lstrip())
+
+        stream.write(scenario)
