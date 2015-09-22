@@ -17,7 +17,6 @@ setup(
     license = "MIT",
     packages = ["bddbot", ],
     install_requires = [
-        "mock-open >= 1.2.2",
     ],
     classifiers = [
         "Development Status :: 1 - Planning",
