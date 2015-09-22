@@ -276,7 +276,7 @@ class TestLoading(BaseDealerTest):
             dealer.load()
 
         assert_false(dealer.is_done)
-        assert_in("no features bank", error_context.exception.message.lower())
+        assert_in("couldn't open features bank", error_context.exception.message.lower())
         self.mocked_open.assert_any_call(DEFAULT_BANK_PATH, "r")
 
     def test_successful_call(self):

@@ -6,7 +6,7 @@ Feature: Initialize Bot
     Scenario: No features bank file
         Given the file "features.bank" doesn't exist
         When the bot is loaded
-        Then an error saying "no features bank" is raised
+        Then an error saying "Couldn't open features bank" is raised
         And the "features" directory wasn't created
 
     Scenario: No features in bank

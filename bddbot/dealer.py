@@ -8,7 +8,7 @@ file ("*.feature"). So for example, the bank file 'banks/awesome.bank' will be t
 feature file 'features/awesome.feature'.
 """
 from os.path import dirname, isdir, join
-from os import mkdir, getcwd, listdir
+from os import mkdir, listdir
 from subprocess import Popen, PIPE
 from collections import OrderedDict
 import logging
@@ -120,7 +120,7 @@ class Dealer(object):
             with open(path, "r") as bank_input:
                 self.__banks[output_path] = Bank(bank_input.read())
         except IOError:
-            raise BotError("No features bank in {:s}".format(getcwd()))
+            raise BotError("Couldn't open features bank '{:s}'".format(path))
         except ParsingError as parsing_error:
             # Supply the bank path and re-raise.
             parsing_error.filename = path
