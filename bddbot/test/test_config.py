@@ -1,11 +1,11 @@
 """Test configuration properties."""
 
-from nose.tools import assert_equal, assert_in, assert_raises
+from nose.tools import assert_equal, assert_in, assert_is_none, assert_raises
 from mock import patch
 from mock_open import MockOpen
 from bddbot.config import BotConfiguration, ConfigError
 from bddbot.config import CONFIG_FILENAME
-from bddbot.test.constants import BANK_PATH_1, DEFAULT_TEST_COMMANDS
+from bddbot.test.constants import BANK_PATH_1, DEFAULT_TEST_COMMANDS, PORT
 
 class BaseConfigTest(object):
     # pylint: disable=missing-docstring
@@ -100,3 +100,21 @@ class TestBDDTestCommands(BaseConfigTest):
         ]))
 
         assert_equal(expected_commands, self.config.tests)
+        assert_equal([], self.config.banks)
+
+class TestServer(BaseConfigTest):
+    # pylint: disable=too-few-public-methods
+    def test_empty_value(self):
+        self._create_config("\n".join([
+            "[server]",
+        ]))
+
+        assert_is_none(self.config.port)
+
+    def test_set_port(self):
+        self._create_config("\n".join([
+            "[server]",
+            "port: {:d}".format(PORT),
+        ]))
+
+        assert_equal(PORT, self.config.port)

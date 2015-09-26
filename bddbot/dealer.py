@@ -12,14 +12,15 @@ from os import mkdir
 from subprocess import Popen, PIPE
 import logging
 import pickle
-from .bank import Bank
+from .bank import Bank, RemoteBank
 from .errors import BotError, ParsingError
 
 STATE_PATH = ".bdd-dealer"
 
 class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented."""
-    def __init__(self, bank_paths, tests):
+    def __init__(self, bank_paths, tests, name = ""):
+        self.name = name
         self.__bank_paths = bank_paths
         self.__tests = tests
         self.__is_loaded = False
@@ -59,7 +60,11 @@ class Dealer(object):
 
         if self.__bank_paths:
             for path in self.__bank_paths:
-                self._load_file(path)
+                if path.startswith("@"):
+                    (address, port) = path[1:].split(":")
+                    self._connect_to_server(address, int(port))
+                else:
+                    self._load_file(path)
 
         else:
             self.__log.warning("No banks")
@@ -110,6 +115,11 @@ class Dealer(object):
                 "Parsing error in %s:%d:%s",
                 path, parsing_error.line, parsing_error.filename)
             raise
+
+    def _connect_to_server(self, host, port):
+        """Connect to remote bank server."""
+        self.__log.info("Connecting to remote server at %s:%d", host, port)
+        self.__banks.append(RemoteBank(self.name, host, port))
 
     def _are_tests_passing(self):
         """Verify that all scenarios were implemented using `behave`.

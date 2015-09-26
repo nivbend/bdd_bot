@@ -1,3 +1,4 @@
+@local
 Feature: Initialize Bot
     In order to start serving features on a repository
     As a repository's features moderator

@@ -1,15 +1,22 @@
 """Test logging and output."""
 
 from os import chdir
-from nose.tools import assert_raises
+from time import sleep
+from threading import Thread
+import pickle
+from contextlib import contextmanager
+from nose.tools import assert_equal, assert_raises
 from testfixtures import TempDirectory
 from mock import patch, call, ANY
-import pickle
 from bddbot.dealer import Dealer, STATE_PATH
 from bddbot.config import TEST_COMMAND
 from bddbot.errors import BotError, ParsingError
+from bddbot.test.test_server import BaseServerTest
 from bddbot.test.constants import BANK_PATH_1, BANK_PATH_2, FEATURE_PATH_1, FEATURE_PATH_2
-from bddbot.test.constants import DEFAULT_TEST_COMMANDS
+from bddbot.test.constants import DEFAULT_TEST_COMMANDS, HOST, PORT, CLIENT
+
+BANK_PATH_3 = "banks/third.bank"
+FEATURE_PATH_3 = BANK_PATH_3.replace("bank", "feature")
 
 (HEADER_1, FEATURE_1, SCENARIO_1_1) = (
     "# Header",
@@ -22,11 +29,29 @@ from bddbot.test.constants import DEFAULT_TEST_COMMANDS
     "    Scenario: Scenario 2.2",
     "        Some text under the scenario")
 
-class TestDealerLogging(object):
+(FEATURE_3_1, FEATURE_3_2, SCENARIO_3_1) = (
+    "Feature: Feature 3",
+    "    # A comment on the feature",
+    "    Scenario: Scenario 3.1",)
+
+class LoggingTestMixin(object):
+    """A mixin class to mock out getLogger calls."""
+    # pylint: disable=too-few-public-methods
+    @contextmanager
+    def _mock_log(self):
+        """Mock out logger creation."""
+        with patch("bddbot.dealer.logging.getLogger") as mock_logger:
+            yield
+
+        mock_logger.assert_called_once_with(ANY)
+
+        # pylint: disable=attribute-defined-outside-init
+        self.mocked_log = mock_logger.return_value
+
+class TestDealerLogging(LoggingTestMixin):
     def __init__(self):
         self.sandbox = None
         self.dealer = None
-        self.mocked_log = None
 
     def setup(self):
         self.sandbox = TempDirectory()
@@ -36,7 +61,6 @@ class TestDealerLogging(object):
         self.sandbox.cleanup()
 
         self.dealer = None
-        self.mocked_log = None
 
     def test_state(self):
         self.sandbox.write(STATE_PATH, pickle.dumps({}))
@@ -77,6 +101,16 @@ class TestDealerLogging(object):
             call.debug("Loading banks"),
             call.info("Loading features bank '%s'", BANK_PATH_1),
             call.info("Loading features bank '%s'", BANK_PATH_2),
+            ])
+        self.mocked_log.warning.assert_not_called()
+
+    def test_remote_bank(self):
+        self._create_dealer(["@{:s}:{:d}".format(HOST, PORT), ])
+        self.dealer.load()
+
+        self.mocked_log.assert_has_calls([
+            call.debug("Loading banks"),
+            call.info("Connecting to remote server at %s:%d", HOST, PORT),
             ])
         self.mocked_log.warning.assert_not_called()
 
@@ -172,11 +206,8 @@ class TestDealerLogging(object):
         if banks is None:
             banks = [BANK_PATH_1, BANK_PATH_2, ]
 
-        with patch("bddbot.dealer.logging.getLogger") as mock_logger:
+        with self._mock_log():
             self.dealer = Dealer(banks, DEFAULT_TEST_COMMANDS)
-
-        mock_logger.assert_called_once_with(ANY)
-        self.mocked_log = mock_logger.return_value
 
     def _write_banks(self):
         # pylint: disable=missing-docstring
@@ -184,3 +215,111 @@ class TestDealerLogging(object):
         self.sandbox.write(
             BANK_PATH_2,
             "\n".join([FEATURE_2, SCENARIO_2_1, SCENARIO_2_2_1, SCENARIO_2_2_2, ]))
+
+class TestServerLogging(BaseServerTest, LoggingTestMixin):
+    FEATURES = {
+        BANK_PATH_1: (FEATURE_PATH_1, HEADER_1, FEATURE_1),
+        BANK_PATH_2: (FEATURE_PATH_2, "", FEATURE_2),
+        BANK_PATH_3: (FEATURE_PATH_3, "", "\n".join([FEATURE_3_1, FEATURE_3_2, ])),
+    }
+
+    def __init__(self):
+        super(TestServerLogging, self).__init__()
+        self.mocked_log = None
+
+    def teardown(self):
+        super(TestServerLogging, self).teardown()
+        self.mocked_log = None
+
+    def test_serving(self):
+        self._create_server([BANK_PATH_1, ])
+
+        self.server.server_address = (HOST, PORT)
+        thread = Thread(target = self.server.serve_forever)
+        with patch("select.select", return_value = ([], [], [])):
+            thread.start()
+
+        # Give thread some time to run.
+        sleep(0.1)
+
+        self.mocked_log.info.assert_called_with("Server started on %s:%d", HOST, PORT)
+
+        self.server.shutdown()
+        thread.join()
+
+        self.mocked_log.info.assert_called_with("Stopped serving")
+
+    def test_assignment(self):
+        # pylint: disable=too-many-statements
+        (client_1, client_2) = (CLIENT + "_1", CLIENT + "_2")
+        self._create_server([BANK_PATH_1, BANK_PATH_2, BANK_PATH_3, ])
+
+        # Assign the first bank to the first client.
+        self._setup_bank(BANK_PATH_1, True, False, SCENARIO_1_1)
+        self._setup_bank(BANK_PATH_2, True, False, SCENARIO_2_1)
+        self._setup_bank(BANK_PATH_3, True, False, SCENARIO_3_1)
+        assert_equal(SCENARIO_1_1, self.server.get_next_scenario(client_1))
+        self.mocked_log.info.assert_any_call("Assigning '%s' to '%s'", FEATURE_1, client_1)
+        self.mocked_log.info.assert_any_call("Sent '%s' to '%s'", SCENARIO_1_1.lstrip(), client_1)
+        assert_equal(2, self.mocked_log.info.call_count)
+        self.mocked_log.reset_mock()
+
+        # Assign the next bank to the second client.
+        self._setup_bank(BANK_PATH_1, False, True, None)
+        self._setup_bank(BANK_PATH_2, True, False, SCENARIO_2_1)
+        self._setup_bank(BANK_PATH_3, True, False, SCENARIO_3_1)
+        assert_equal(SCENARIO_2_1, self.server.get_next_scenario(client_2))
+        self.mocked_log.info.assert_any_call("Assigning '%s' to '%s'", FEATURE_2, client_2)
+        self.mocked_log.info.assert_any_call("Sent '%s' to '%s'", SCENARIO_2_1.lstrip(), client_2)
+        assert_equal(2, self.mocked_log.info.call_count)
+        self.mocked_log.reset_mock()
+
+        # Unassign a bank when it is done and assign the next.
+        self._setup_bank(BANK_PATH_1, False, True, None)
+        self._setup_bank(BANK_PATH_2, True, False, SCENARIO_2_1)
+        self._setup_bank(BANK_PATH_3, True, False, SCENARIO_3_1)
+        assert_equal(SCENARIO_3_1, self.server.get_next_scenario(client_1))
+        self.mocked_log.info.assert_any_call("Unassigning '%s' from '%s'", FEATURE_1, client_1)
+        self.mocked_log.info.assert_any_call("Assigning '%s' to '%s'", FEATURE_3_1, client_1)
+        self.mocked_log.info.assert_any_call("Sent '%s' to '%s'", SCENARIO_3_1.lstrip(), client_1)
+        assert_equal(3, self.mocked_log.info.call_count)
+        self.mocked_log.reset_mock()
+
+        # Deal next scenario from an assigned bank.
+        scenario_2_2 = "\n".join([SCENARIO_2_2_1, SCENARIO_2_2_2, ])
+        self._setup_bank(BANK_PATH_1, False, True, None)
+        self._setup_bank(BANK_PATH_2, False, False, scenario_2_2)
+        self._setup_bank(BANK_PATH_3, False, True, None)
+        assert_equal(scenario_2_2, self.server.get_next_scenario(client_2))
+        self.mocked_log.info.assert_any_call("Sent '%s' to '%s'", scenario_2_2.lstrip(), client_2)
+        assert_equal(1, self.mocked_log.info.call_count)
+        self.mocked_log.reset_mock()
+
+        # Unassign banks when they are finished.
+        self._setup_bank(BANK_PATH_1, False, True, None)
+        self._setup_bank(BANK_PATH_2, False, True, None)
+        self._setup_bank(BANK_PATH_3, False, True, None)
+        assert_equal(None, self.server.get_next_scenario(client_1))
+        assert_equal(None, self.server.get_next_scenario(client_2))
+        self.mocked_log.info.assert_any_call("Unassigning '%s' from '%s'", FEATURE_3_1, client_1)
+        self.mocked_log.debug.assert_any_call("No more scenarios for '%s'", client_1)
+        self.mocked_log.info.assert_any_call("Unassigning '%s' from '%s'", FEATURE_2, client_2)
+        self.mocked_log.debug.assert_any_call("No more scenarios for '%s'", client_2)
+        assert_equal(2, self.mocked_log.info.call_count)
+        self.mocked_log.reset_mock()
+
+        # Don't assign banks if there aren't any with no more logs (aside debug).
+        self._setup_bank(BANK_PATH_1, False, True, None)
+        self._setup_bank(BANK_PATH_2, False, True, None)
+        self._setup_bank(BANK_PATH_3, False, True, None)
+        assert_equal(None, self.server.get_next_scenario(client_1))
+        assert_equal(None, self.server.get_next_scenario(client_2))
+        assert_equal(0, self.mocked_log.info.call_count)
+        self.mocked_log.info.assert_not_called()
+
+    def _create_server(self, banks):
+        """Create a new server with mock logger and banks."""
+        with self._mock_log():
+            super(TestServerLogging, self)._create_server(banks)
+
+        self.mocked_log.assert_not_called()

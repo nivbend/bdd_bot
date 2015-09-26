@@ -3,13 +3,14 @@
 from collections import defaultdict
 from subprocess import Popen
 from os.path import dirname
-from nose.tools import assert_equal, assert_in, assert_raises
+from nose.tools import assert_true, assert_false, assert_equal, assert_in, assert_raises
 from mock import Mock, patch, call, create_autospec, ANY
 from mock_open import MockOpen
 from bddbot.dealer import Dealer, STATE_PATH
 from bddbot.config import TEST_COMMAND
 from bddbot.errors import BotError
-from bddbot.test.constants import BANK_PATH_1, BANK_PATH_2, FEATURE_PATH_1, DEFAULT_TEST_COMMANDS
+from bddbot.test.constants import BANK_PATH_1, BANK_PATH_2, FEATURE_PATH_1
+from bddbot.test.constants import DEFAULT_TEST_COMMANDS, CLIENT
 
 FEATURES_DIRECTORY = "features"
 
@@ -47,24 +48,25 @@ class BaseDealerTest(object):
             "bddbot.dealer",
             open = self.mocked_open,
             Bank = self.mocked_bank_class,
+            RemoteBank = self.mocked_bank_class,
             Popen = self.mocked_popen,
             mkdir = self.mocked_mkdir)
 
         patcher.start()
 
-    def _create_dealer(self, banks, tests):
+    def _create_dealer(self, banks, tests, name = ""):
         """Create a new dealer instance without loading state."""
         if tests is None:
             tests = DEFAULT_TEST_COMMANDS
 
         self.mocked_open[STATE_PATH].side_effect = IOError()
-        self.dealer = Dealer(banks, tests)
+        self.dealer = Dealer(banks, tests, name = name)
 
         self.mocked_open.assert_called_once_with(STATE_PATH, "rb")
 
         self._reset_mocks()
 
-    def _load_dealer(self, banks = None, tests = None):
+    def _load_dealer(self, banks = None, tests = None, name = ""):
         """Simulate a call to load() and verify success."""
         if banks is None:
             banks = [BANK_PATH_1, ]
@@ -72,13 +74,19 @@ class BaseDealerTest(object):
             tests = DEFAULT_TEST_COMMANDS
 
         # Setup and call load().
-        self._create_dealer(banks, tests)
+        self._create_dealer(banks, tests, name = name)
         self.dealer.load()
 
         # Verify calls to mocks.
         self.mocked_open.assert_not_called()
-        self.mocked_bank_class.assert_has_calls([call(path) for path in banks])
         self.mocked_popen.assert_not_called()
+
+        for path in banks:
+            if not path.startswith("@"):
+                self.mocked_bank_class.assert_any_call(path)
+            else:
+                (host, port) = path[1:].split(":")
+                self.mocked_bank_class.assert_called_with(name, host, int(port))
 
         self._reset_mocks()
 
@@ -177,9 +185,17 @@ class BaseDealerTest(object):
         for mock_bank in self.mocked_bank.itervalues():
             mock_bank.reset_mock()
 
-    def __create_bank(self, bank_path):
+    def __create_bank(self, *args):
         """Return a mock Bank instance, or creates a new one and adds it to the map."""
-        return self.mocked_bank.setdefault(bank_path, Mock())
+        if 1 == len(args):
+            is_remote = False
+            (key, ) = args
+        else:
+            is_remote = True
+            (_, host, port) = args
+            key = "@{host}:{port:d}".format(host = host, port = port)
+
+        return self.mocked_bank.setdefault(key, Mock(is_remote = is_remote))
 
 class TestConfiguration(BaseDealerTest):
     """Test tweaking behavior with the configuration file.
@@ -202,6 +218,10 @@ class TestConfiguration(BaseDealerTest):
     def test_set_bank(self):
         for (bank_path, expected_feature_path) in self.BANK_FILE_PATHS:
             yield (self._check_set_bank, bank_path, expected_feature_path)
+
+    def test_set_remote_bank(self):
+        self._load_dealer(banks = ["@host:3037", ], name = CLIENT)
+        assert_true(self.mocked_bank["@host:3037"].is_remote)
 
     def test_set_multiple_banks(self):
         self._load_dealer(banks = [BANK_PATH_1, BANK_PATH_2, ])
@@ -235,6 +255,7 @@ class TestConfiguration(BaseDealerTest):
             feature_path = expected_feature_path)
 
         self._deal(FEATURE_1, SCENARIO_1_1, bank_path, feature_path = expected_feature_path)
+        assert_false(self.mocked_bank[bank_path].is_remote)
 
 class TestLoading(BaseDealerTest):
     def setup(self):
