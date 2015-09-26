@@ -56,16 +56,16 @@ Feature: Configure parameters
             """
             [paths]
             bank:
-                banks/goodness-1.bank
-                banks/goodness-2.bank
+                banks/goodness_1.bank
+                banks/goodness_2.bank
             """
         And a directory "features/steps"
-        And the features bank "banks/goodness-1.bank":
+        And the features bank "banks/goodness_1.bank":
             """
             Feature: Volunteering
                 Scenario: Helping in a soup kitchen
             """
-        And the features bank "banks/goodness-2.bank":
+        And the features bank "banks/goodness_2.bank":
             """
             Feature: Donations
                 Scenario: Giving money to the poor
@@ -73,12 +73,12 @@ Feature: Configure parameters
             """
         And 1 scenario/s were dealt
         When another scenario is dealt
-        Then "features/goodness-1.feature" contains:
+        Then "features/goodness_1.feature" contains:
             """
             Feature: Volunteering
                 Scenario: Helping in a soup kitchen
             """
-        Then "features/goodness-2.feature" contains:
+        Then "features/goodness_2.feature" contains:
             """
             Feature: Donations
                 Scenario: Giving money to the poor
@@ -90,30 +90,30 @@ Feature: Configure parameters
         Given the configuration file:
             """
             [paths]
-            bank: my-banks
+            bank: my_banks
 
             [test]
-            run: behave my-features
+            run: behave my_features
             """
-        And a directory "my-features/steps"
-        And the features bank "my-banks/first.bank":
+        And a directory "my_features/steps"
+        And the features bank "my_banks/first.bank":
             """
             Feature: The first feature
                 Scenario: The first scenario
             """
-        And the features bank "my-banks/second.bank":
+        And the features bank "my_banks/second.bank":
             """
             Feature: The second feature
                 Scenario: The second scenario
             """
         And 1 scenario/s were dealt
         When another scenario is dealt
-        Then "my-features/first.feature" contains:
+        Then "my_features/first.feature" contains:
             """
             Feature: The first feature
                 Scenario: The first scenario
             """
-        Then "my-features/second.feature" contains:
+        Then "my_features/second.feature" contains:
             """
             Feature: The second feature
                 Scenario: The second scenario

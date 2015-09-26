@@ -7,17 +7,17 @@ from bddbot.dealer import Dealer, STATE_PATH
 from bddbot.config import BotConfiguration
 from bddbot.errors import BotError
 
-@given(r"(?P<count>[1-9][0-9]*) scenario/s were dealt")
+@given("{count:Count} scenario/s were dealt")
 def n_scenarios_were_dealt(context, count):
     if not context.dealer:
         config = BotConfiguration()
         context.dealer = Dealer(config.banks, config.test_commands)
 
-    for _ in xrange(int(count)):
+    for _ in xrange(count):
         context.dealer.deal()
         context.dealt += 1
 
-@when(r"the dealer is loaded")
+@when("the dealer is loaded")
 def load_dealer(context):
     assert_is_none(context.dealer)
 
@@ -29,19 +29,19 @@ def load_dealer(context):
     except BotError as error:
         context.error = error
 
-@when(r"the bot is restarted")
+@when("the bot is restarted")
 def restart_the_bot(context):
     assert_is_not_none(context.dealer)
 
     config = BotConfiguration()
     context.dealer = Dealer(config.banks, config.test_commands)
 
-@when(r"the bot's state is saved")
+@when("the bot's state is saved")
 def save_state(context):
     context.dealer.save()
     assert_in(STATE_PATH, context.sandbox.actual())
 
-@when(r"the first scenario is dealt")
+@when("the first scenario is dealt")
 def first_scenario_is_dealt(context):
     assert_equal(0, context.dealt)
 
@@ -56,7 +56,7 @@ def first_scenario_is_dealt(context):
 
     context.dealt += 1
 
-@when(r"another scenario is dealt")
+@when("another scenario is dealt")
 def another_scenario_is_dealt(context):
     assert_is_not_none(context.dealer)
     assert_greater(context.dealt, 0)
@@ -68,7 +68,7 @@ def another_scenario_is_dealt(context):
 
     context.dealt += 1
 
-@then(r"there are no more scenarios to deal")
+@then("there are no more scenarios to deal")
 def no_more_scenarios(context):
     assert_is_none(context.error)
     assert_is_not_none(context.dealer)

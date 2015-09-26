@@ -4,7 +4,7 @@ from behave import then
 from nose.tools import assert_in
 from mock import call, ANY
 
-@then(r"the command \"(?P<command>.+)\" is executed")
+@then("the command \"{command}\" is executed")
 def command_is_executed(context, command):
     assert_in(
         call(str(command).split(), stdout = ANY, stderr = ANY),
