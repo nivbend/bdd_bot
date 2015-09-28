@@ -4,9 +4,8 @@ Feature: Initialize Bot
     I want to initialize the bot's state on a given repository
 
     Scenario: No features bank file
-        Given the file "features.bank" doesn't exist
         When the dealer is loaded
-        Then an error saying "Couldn't open features bank" is raised
+        Then there are no more scenarios to deal
         And the "features" directory wasn't created
 
     Scenario: No features in bank

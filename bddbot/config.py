@@ -4,7 +4,6 @@ from ConfigParser import SafeConfigParser as ConfigParser
 from .errors import BotError
 
 DEFAULT_CONFIG_FILENAME = "bddbot.cfg"
-DEFAULT_BANK_DIRECTORY = "banks"
 DEFAULT_TEST_COMMAND = "behave"
 
 class ConfigError(BotError):
@@ -45,7 +44,7 @@ class BotConfiguration(object):
 def _get_banks(config):
     """get the feature banks' paths from configuration."""
     if not config.has_option("paths", "bank"):
-        return [DEFAULT_BANK_DIRECTORY, ]
+        return []
 
     paths = config.get("paths", "bank").splitlines()
     if not paths:

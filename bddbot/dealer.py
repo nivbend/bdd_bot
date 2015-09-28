@@ -7,13 +7,13 @@ Features are written incrementaly from a bank file ("*.bank") to a corrosponding
 file ("*.feature"). So for example, the bank file 'banks/awesome.bank' will be translated to the
 feature file 'features/awesome.feature'.
 """
-from os.path import dirname, isdir, join
-from os import mkdir, listdir
+from os.path import dirname
+from os import mkdir
 from subprocess import Popen, PIPE
 import logging
 import pickle
 from .bank import Bank, ParsingError
-from .config import DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
+from .config import DEFAULT_TEST_COMMAND
 from .errors import BotError
 
 STATE_PATH = ".bdd-dealer"
@@ -22,7 +22,7 @@ class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented."""
     def __init__(self, bank_paths = None, tests = None):
         if not bank_paths:
-            bank_paths = [DEFAULT_BANK_DIRECTORY, ]
+            bank_paths = []
         if not tests:
             tests = [DEFAULT_TEST_COMMAND.split(), ]
 
@@ -63,11 +63,12 @@ class Dealer(object):
 
         self.__log.debug("Loading banks")
 
-        for path in self.__bank_paths:
-            if isdir(path):
-                self._load_directory(path)
-            else:
+        if self.__bank_paths:
+            for path in self.__bank_paths:
                 self._load_file(path)
+
+        else:
+            self.__log.warning("No banks")
 
         self.__is_loaded = True
 
@@ -100,17 +101,6 @@ class Dealer(object):
             self._deal_first(current_bank)
         else:
             self._deal_another(current_bank)
-
-    def _load_directory(self, path):
-        """Load all bank files under a given directory."""
-        self.__log.info("Checking bank directory '%s'", path)
-        for filename in listdir(path):
-            if not filename.endswith(".bank"):
-                self.__log.debug("Skipping non-bank file '%s'", filename)
-                continue
-
-            filename = join(path, filename)
-            self._load_file(filename)
 
     def _load_file(self, path):
         """Load a bank file."""

@@ -3,6 +3,13 @@ Feature: Initialize Bot
     As a repository's features moderator
     I want to deal the first scenario in a feature file
 
+    Background: Configuration file
+        Given the configuration file:
+            """
+            [paths]
+            bank: banks/default.bank
+            """
+
     Scenario: One feature, no scenarios
         Given the features bank "banks/default.bank":
             """

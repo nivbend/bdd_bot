@@ -3,36 +3,6 @@ Feature: Configure parameters
     As any type of user
     I want to be able to set certain parameters in a configuration file
 
-    Scenario: No configuration file
-        Given the file "bddbot.cfg" doesn't exist
-        And the features bank "banks/default.bank":
-            """
-            Feature: Doing great deeds
-                Scenario: Helping children in Africa
-            """
-        When the first scenario is dealt
-        Then "features/default.feature" contains:
-            """
-            Feature: Doing great deeds
-                Scenario: Helping children in Africa
-            """
-
-    Scenario: An empty configuration file
-        Given the configuration file:
-            """
-            """
-        And the features bank "banks/default.bank":
-            """
-            Feature: Doing great deeds
-                Scenario: Donating clothes to charity
-            """
-        When the first scenario is dealt
-        Then "features/default.feature" contains:
-            """
-            Feature: Doing great deeds
-                Scenario: Donating clothes to charity
-            """
-
     Scenario: Setting a features bank file
         Given the configuration file:
             """
@@ -84,44 +54,12 @@ Feature: Configure parameters
                 Scenario: Giving money to the poor
             """
 
-    Scenario: Searching a directory for feature banks
-        # Supplying a directory as a bank path will search all files under it
-        # for '*.bank' files and will load them.
-        Given the configuration file:
-            """
-            [paths]
-            bank: my_banks
-
-            [test]
-            run: behave my_features
-            """
-        And a directory "my_features/steps"
-        And the features bank "my_banks/first.bank":
-            """
-            Feature: The first feature
-                Scenario: The first scenario
-            """
-        And the features bank "my_banks/second.bank":
-            """
-            Feature: The second feature
-                Scenario: The second scenario
-            """
-        And 1 scenario/s were dealt
-        When another scenario is dealt
-        Then "my_features/first.feature" contains:
-            """
-            Feature: The first feature
-                Scenario: The first scenario
-            """
-        Then "my_features/second.feature" contains:
-            """
-            Feature: The second feature
-                Scenario: The second scenario
-            """
-
     Scenario: Setting the test command
         Given the configuration file:
             """
+            [paths]
+            bank: banks/default.bank
+
             [test]
             run: behave --format=null
             """
@@ -146,6 +84,9 @@ Feature: Configure parameters
         # Supplying more than one test command will run them consecutively.
         Given the configuration file:
             """
+            [paths]
+            bank: banks/default.bank
+
             [test]
             run:
                 behave --format=null

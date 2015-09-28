@@ -5,7 +5,12 @@ Feature: Deal another scenario
 
     Background: One scenario was already dealt
         # This feature tests the implementation of a calculator module.
-        Given the features bank "banks/basic.bank":
+        Given the configuration file:
+            """
+            [paths]
+            bank: banks/basic.bank
+            """
+        And the features bank "banks/basic.bank":
             """
             Feature: Basic calculator operations
                 Scenario: Adding
@@ -212,7 +217,14 @@ Feature: Deal another scenario
     Scenario: First feature file wasn't implemented yet
         # If not all scenarios from the first feature file were implemented, don't
         # deal from the next feature bank.
-        Given the file "calc/calculator.py" contains:
+        Given the configuration file:
+            """
+            [paths]
+            bank:
+                banks/basic.bank
+                banks/edge_cases.bank
+            """
+        And the file "calc/calculator.py" contains:
             """
             OPERATIONS = {
                 "+": lambda a,b: a + b,
@@ -232,13 +244,6 @@ Feature: Deal another scenario
                     And a value of 0 was entered
                     When the outcome is calculated
                     Then the result is None
-            """
-        And the configuration file:
-            """
-            [paths]
-            bank:
-                banks/basic.bank
-                banks/edge_cases.bank
             """
         And 4 scenario/s were dealt
         When another scenario is dealt
@@ -276,7 +281,14 @@ Feature: Deal another scenario
         And the "features/edge_cases.feature" file wasn't created
 
     Scenario: Deal from two feature files
-        Given the file "calc/calculator.py" contains:
+        Given the configuration file:
+            """
+            [paths]
+            bank:
+                banks/basic.bank
+                banks/edge_cases.bank
+            """
+        And the file "calc/calculator.py" contains:
             """
             OPERATIONS = {
                 "+": lambda a,b: a + b,
@@ -297,13 +309,6 @@ Feature: Deal another scenario
                     And a value of 0 was entered
                     When the outcome is calculated
                     Then the result is None
-            """
-        And the configuration file:
-            """
-            [paths]
-            bank:
-                banks/basic.bank
-                banks/edge_cases.bank
             """
         And 4 scenario/s were dealt
         When another scenario is dealt

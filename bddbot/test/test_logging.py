@@ -1,18 +1,17 @@
 """Test logging and output."""
 
 from os import chdir
-from os.path import join
 from nose.tools import assert_raises
 from testfixtures import TempDirectory
 from mock import patch, call, ANY
 import pickle
 from bddbot.dealer import Dealer, STATE_PATH
 from bddbot.bank import ParsingError
-from bddbot.config import DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
+from bddbot.config import DEFAULT_TEST_COMMAND
 from bddbot.errors import BotError
 
-BANK_PATH_1 = join(DEFAULT_BANK_DIRECTORY, "first.bank")
-BANK_PATH_2 = join(DEFAULT_BANK_DIRECTORY, "second.bank")
+BANK_PATH_1 = "banks/first.bank"
+BANK_PATH_2 = "banks/second.bank"
 FEATURE_PATH_1 = BANK_PATH_1.replace("bank", "feature")
 FEATURE_PATH_2 = BANK_PATH_2.replace("bank", "feature")
 
@@ -27,15 +26,18 @@ FEATURE_PATH_2 = BANK_PATH_2.replace("bank", "feature")
     "    Scenario: Scenario 2.2",
     "        Some text under the scenario")
 
-def _create_dealer():
+def _create_dealer(banks = None):
     """Create a new dealer and return it and the mocked-out logger instance."""
+    if banks is None:
+        banks = [BANK_PATH_1, BANK_PATH_2, ]
+
     with patch("bddbot.dealer.logging.getLogger") as mock_log:
-        dealer = Dealer([DEFAULT_BANK_DIRECTORY, ], [DEFAULT_TEST_COMMAND.split(), ])
+        dealer = Dealer(banks)
 
     mock_log.assert_called_once_with(ANY)
 
     # Return the dealer and the logger objects.
-    return (dealer, mock_log())
+    return (dealer, mock_log.return_value)
 
 class TestDealerLogging(object):
     """Test and verify log messages during a dealer's execution."""
@@ -68,9 +70,19 @@ class TestDealerLogging(object):
         mocked_log.error.assert_not_called()
         mocked_log.critical.assert_not_called()
 
+    def test_no_banks(self):
+        # pylint: disable=no-self-use
+        """Output a warning if no banks were specified."""
+        (dealer, mocked_log) = _create_dealer([])
+        dealer.load()
+
+        mocked_log.assert_has_calls([
+            call.debug("Loading banks"),
+            call.warning("No banks"),
+            ])
+
     def test_load(self):
         """Check bank loading messages."""
-        self.sandbox.write(join(DEFAULT_BANK_DIRECTORY, "not_a_bank.txt"), "Don't load me")
         self._write_banks()
 
         (dealer, mocked_log) = _create_dealer()
@@ -78,19 +90,14 @@ class TestDealerLogging(object):
 
         mocked_log.assert_has_calls([
             call.debug("Loading banks"),
-            call.info("Checking bank directory '%s'", DEFAULT_BANK_DIRECTORY),
-            ])
-
-        # We can't rely on the files being listed in a specific order.
-        mocked_log.assert_has_calls([
-            call.debug("Skipping non-bank file '%s'", "not_a_bank.txt"),
             call.info("Loading features bank '%s'", BANK_PATH_1),
             call.info("Loading features bank '%s'", BANK_PATH_2),
-            ], any_order = True)
+            ])
+        mocked_log.warning.assert_not_called()
 
     def test_parsing_error(self):
         """Test parsing error logging during load()."""
-        bad_bank_path = join(DEFAULT_BANK_DIRECTORY, "bad.bank")
+        bad_bank_path = "banks/bad.bank"
         self.sandbox.write(
             bad_bank_path,
             "\n".join([
@@ -100,14 +107,13 @@ class TestDealerLogging(object):
                 "        THIS IS AN UNFINISHED MULTILINE TEXT",
             ]))
 
-        (dealer, mocked_log) = _create_dealer()
+        (dealer, mocked_log) = _create_dealer([bad_bank_path, ])
 
         with assert_raises(ParsingError):
             dealer.load()
 
         mocked_log.assert_has_calls([
             call.debug("Loading banks"),
-            call.info("Checking bank directory '%s'", DEFAULT_BANK_DIRECTORY),
             call.info("Loading features bank '%s'", bad_bank_path),
             call.exception("Parsing error in %s:%d:%s", bad_bank_path, 3, ANY),
             ])

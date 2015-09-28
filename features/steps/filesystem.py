@@ -12,7 +12,6 @@ def file_does_not_exist(context, filename):
 
 @given("the file \"{filename:Path}\" contains")
 def the_file_contains(context, filename):
-    assert_false(isfile(filename), "'{:s}' already exist".format(filename))
     context.sandbox.write(filename, context.text)
 
 @given("the features bank \"{filename:Path}\"")

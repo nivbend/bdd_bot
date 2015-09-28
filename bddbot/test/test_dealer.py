@@ -1,18 +1,17 @@
 """Test the Dealer class."""
 
 from subprocess import Popen
-from os import mkdir, listdir
-from os.path import dirname, basename, join, isdir
-from collections import OrderedDict
+from os import mkdir
+from os.path import dirname
 from nose.tools import assert_true, assert_false, assert_equal, assert_in, assert_raises
 from mock import patch, call, create_autospec, ANY
 from mock_open import MockOpen
 from bddbot.dealer import Dealer, BotError, STATE_PATH
 from bddbot.bank import Bank, ParsingError
-from bddbot.config import DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
+from bddbot.config import DEFAULT_TEST_COMMAND
 
 FEATURES_DIRECTORY = "features"
-DEFAULT_BANK_PATH = join(DEFAULT_BANK_DIRECTORY, "default.bank")
+DEFAULT_BANK_PATH = "banks/default.bank"
 DEFAULT_FEATURE_PATH = DEFAULT_BANK_PATH.replace("bank", "feature")
 
 (FEATURE_1, SCENARIO_1_1, SCENARIO_1_2) = (
@@ -51,46 +50,24 @@ class BaseDealerTest(object):
         return patcher
 
     def _load_dealer(self, banks = None, test_commands = None):
-        """Simulate a call to load() and verify success.
-
-        The `banks` argument is a list of tuples of bank paths and either None (to
-        indicate the path represents a file, not a directory), or the return value
-        of listdir.
-        """
+        """Simulate a call to load() and verify success."""
         if not banks:
-            banks = [(DEFAULT_BANK_DIRECTORY, [basename(DEFAULT_BANK_PATH), ]), ]
+            banks = [DEFAULT_BANK_PATH, ]
         if not test_commands:
             test_commands = [DEFAULT_TEST_COMMAND.split(), ]
 
-        banks = OrderedDict(banks)
-
         self.mocked_open[STATE_PATH].side_effect = IOError()
-        dealer = Dealer(bank_paths = banks.keys(), tests = test_commands)
+        dealer = Dealer(bank_paths = banks, tests = test_commands)
         self.mocked_open.assert_any_call(STATE_PATH, "rb")
 
         # Setup and call load().
         self.mocked_open.side_effect = None
-        mocked_isdir = create_autospec(isdir, side_effect = lambda path: banks[path] is not None)
-        mocked_listdir = create_autospec(listdir, side_effect = lambda path: banks[path])
-        with patch.multiple("bddbot.dealer", isdir = mocked_isdir, listdir = mocked_listdir):
-            dealer.load()
+        dealer.load()
 
-        # Verify number of calls to open() (number of features banks plus the state file).
-        assert_equal(
-            sum(len(paths) if paths else 1 for paths in banks.itervalues()) + 1,
-            self.mocked_open.call_count)
-
-        # Verify calls to isdir(), listdir() and open() according to banks' paths.
-        for (bank, paths) in banks.iteritems():
-            mocked_isdir.assert_any_call(bank)
-
-            if paths is None:
-                self.mocked_open.assert_any_call(bank, "r")
-            else:
-                mocked_listdir.assert_any_call(bank)
-                for path in paths:
-                    self.mocked_open.assert_any_call(join(bank, path), "r")
-                    self.mocked_open[join(bank, path)].read.assert_called_once_with()
+        # Verify number of calls to open().
+        self.mocked_open.assert_any_call(STATE_PATH, "rb")
+        for path in banks:
+            self.mocked_open.assert_any_call(path, "r")
 
         # Verify the rest of the mocks.
         self.mocked_mkdir.assert_not_called()
@@ -175,36 +152,7 @@ class TestConfiguration(BaseDealerTest):
         bank_path_1 = "/path/to/first.bank"
         bank_path_2 = "/path/to/second.bank"
         self._mock_dealer_functions("\n".join([FEATURE_1, SCENARIO_1_1, ]))
-        self._load_dealer(banks = [(bank_path_1, None), (bank_path_2, None), ])
-
-    def test_setting_bank_directory(self):
-        """Supplying a directory path as a bank will iterate over all files under it."""
-        bank_directory_path = "/path/to/banks"
-        bank_path_1 = join(bank_directory_path, "first.bank")
-        bank_path_2 = join(bank_directory_path, "second.bank")
-
-        self._mock_dealer_functions()
-        self.mocked_open[STATE_PATH].side_effect = IOError()
-        mocked_isdir = create_autospec(isdir)
-        mocked_listdir = create_autospec(listdir, return_value = [
-            basename(bank_path_1),
-            basename(bank_path_2),
-            "not_a_bank.txt",
-        ])
-
-        dealer = Dealer(bank_paths = [bank_directory_path, ])
-        with patch.multiple("bddbot.dealer", isdir = mocked_isdir, listdir = mocked_listdir):
-            dealer.load()
-
-        mocked_isdir.assert_called_once_with(bank_directory_path)
-        mocked_listdir.assert_called_once_with(bank_directory_path)
-        assert_equal(
-            [call(STATE_PATH, "rb"), call(bank_path_1, "r"), call(bank_path_2, "r"), ],
-            self.mocked_open.call_args_list)
-        self.mocked_open[bank_path_1].read.assert_called_once_with()
-        self.mocked_open[bank_path_2].read.assert_called_once_with()
-        self.mocked_mkdir.assert_not_called()
-        self.mocked_popen.assert_not_called()
+        self._load_dealer(banks = [bank_path_1, bank_path_2, ])
 
     def test_setting_test_command(self):
         """Using custom test commands to verify scenarios."""
@@ -226,7 +174,7 @@ class TestConfiguration(BaseDealerTest):
         # pylint: disable=missing-docstring
         self._mock_dealer_functions()
         self.mocked_open[bank_path].read_data = "\n".join([FEATURE_1, SCENARIO_1_1, ])
-        dealer = self._load_dealer(banks = [(bank_path, None), ])
+        dealer = self._load_dealer(banks = [bank_path, ])
         self._deal(dealer, FEATURE_1, SCENARIO_1_1, path = expected_feature_path)
 
 class TestLoading(BaseDealerTest):
@@ -428,18 +376,15 @@ class TestDealNext(BaseDealerTest):
 
     def test_should_not_from_second_bank(self):
         """If the first bank isn't done, do not deal from the second bank."""
-        bank_path_1 = join(DEFAULT_BANK_DIRECTORY, "first.bank")
-        bank_path_2 = join(DEFAULT_BANK_DIRECTORY, "second.bank")
+        bank_path_1 = "banks/first.bank"
+        bank_path_2 = "banks/second.bank"
         feature_path_1 = bank_path_1.replace("bank", "feature")
 
         self._mock_dealer_functions()
         self.mocked_open[bank_path_1].read_data = "\n".join([FEATURE_1, SCENARIO_1_1, ])
         self.mocked_open[bank_path_2].read_data = "\n".join([FEATURE_2, SCENARIO_2_1, ])
 
-        dealer = self._load_dealer(banks = [
-            (DEFAULT_BANK_DIRECTORY, [basename(bank_path_1), basename(bank_path_2), ]),
-        ])
-
+        dealer = self._load_dealer(banks = [bank_path_1, bank_path_2, ])
         self._deal(dealer, FEATURE_1, SCENARIO_1_1, path = feature_path_1)
         assert_false(dealer.is_done)
 
@@ -456,8 +401,8 @@ class TestDealNext(BaseDealerTest):
 
     def test_should_deal_from_second_bank(self):
         """When the first bank is done, deal from the second if available."""
-        bank_path_1 = join(DEFAULT_BANK_DIRECTORY, "first.bank")
-        bank_path_2 = join(DEFAULT_BANK_DIRECTORY, "second.bank")
+        bank_path_1 = "banks/first.bank"
+        bank_path_2 = "banks/second.bank"
         feature_path_1 = bank_path_1.replace("bank", "feature")
         feature_path_2 = bank_path_2.replace("bank", "feature")
 
@@ -465,10 +410,7 @@ class TestDealNext(BaseDealerTest):
         self.mocked_open[bank_path_1].read_data = "\n".join([FEATURE_1, SCENARIO_1_1, ])
         self.mocked_open[bank_path_2].read_data = "\n".join([FEATURE_2, SCENARIO_2_1, ])
 
-        dealer = self._load_dealer(banks = [
-            (DEFAULT_BANK_DIRECTORY, [basename(bank_path_1), basename(bank_path_2), ]),
-        ])
-
+        dealer = self._load_dealer(banks = [bank_path_1, bank_path_2, ])
         self._deal(dealer, FEATURE_1, SCENARIO_1_1, path = feature_path_1)
         assert_false(dealer.is_done)
 
@@ -477,8 +419,8 @@ class TestDealNext(BaseDealerTest):
 
 class TestPersistency(BaseDealerTest):
     """Test storing and loading the bot's state."""
-    BANK_PATH_1 = join(DEFAULT_BANK_DIRECTORY, "first.bank")
-    BANK_PATH_2 = join(DEFAULT_BANK_DIRECTORY, "second.bank")
+    BANK_PATH_1 = "banks/first.bank"
+    BANK_PATH_2 = "banks/second.bank"
     FEATURE_PATH_1 = BANK_PATH_1.replace("bank", "feature")
     FEATURE_PATH_2 = BANK_PATH_2.replace("bank", "feature")
 
@@ -519,12 +461,7 @@ class TestPersistency(BaseDealerTest):
         self.mocked_open[STATE_PATH].side_effect = IOError()
 
         # Verify state after a call to load().
-        dealer = self._load_dealer(banks = [
-            (DEFAULT_BANK_DIRECTORY, [
-                basename(self.BANK_PATH_1),
-                basename(self.BANK_PATH_2),
-            ]),
-        ])
+        dealer = self._load_dealer(banks = [self.BANK_PATH_1, self.BANK_PATH_2, ])
 
         self._verify_save(dealer, True, False, True, False)
 

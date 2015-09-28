@@ -4,7 +4,7 @@ from nose.tools import assert_equal, assert_in, assert_raises
 from mock import patch
 from mock_open import MockOpen
 from bddbot.config import BotConfiguration, ConfigError
-from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_BANK_DIRECTORY, DEFAULT_TEST_COMMAND
+from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_TEST_COMMAND
 
 @patch("bddbot.config.open", new_callable = MockOpen)
 def test_no_config_file(mock_open):
@@ -15,7 +15,7 @@ def test_no_config_file(mock_open):
 
     mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], config.test_commands)
-    assert_equal([DEFAULT_BANK_DIRECTORY, ], config.banks)
+    assert_equal([], config.banks)
 
 @patch("bddbot.config.open", new_callable = MockOpen)
 def test_empty_config_file(mock_open):
@@ -26,7 +26,7 @@ def test_empty_config_file(mock_open):
 
     mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], config.test_commands)
-    assert_equal([DEFAULT_BANK_DIRECTORY, ], config.banks)
+    assert_equal([], config.banks)
 
 @patch("bddbot.config.open", new_callable = MockOpen)
 def test_multiple_options(mock_open):
@@ -57,7 +57,7 @@ def test_custom_config_file(mock_open):
 
     mock_open.assert_called_once_with(config_path, "r")
     assert_equal([DEFAULT_TEST_COMMAND.split(), ], config.test_commands)
-    assert_equal([DEFAULT_BANK_DIRECTORY, ], config.banks)
+    assert_equal([], config.banks)
 
 class TestBankPath(object):
     # pylint: disable=too-few-public-methods
@@ -131,4 +131,4 @@ class TestBDDTestCommands(object):
 
         mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
         assert_equal(expected_commands, config.test_commands)
-        assert_equal([DEFAULT_BANK_DIRECTORY, ], config.banks)
+        assert_equal([], config.banks)
