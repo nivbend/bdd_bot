@@ -7,8 +7,9 @@ from nose.tools import assert_true, assert_false, assert_equal, assert_in, asser
 from mock import patch, call, create_autospec, ANY
 from mock_open import MockOpen
 from bddbot.dealer import Dealer, BotError, STATE_PATH
-from bddbot.bank import Bank, ParsingError
+from bddbot.bank import Bank
 from bddbot.config import DEFAULT_TEST_COMMAND
+from bddbot.errors import ParsingError
 
 FEATURES_DIRECTORY = "features"
 DEFAULT_BANK_PATH = "banks/default.bank"

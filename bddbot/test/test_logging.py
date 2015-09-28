@@ -6,9 +6,8 @@ from testfixtures import TempDirectory
 from mock import patch, call, ANY
 import pickle
 from bddbot.dealer import Dealer, STATE_PATH
-from bddbot.bank import ParsingError
 from bddbot.config import DEFAULT_TEST_COMMAND
-from bddbot.errors import BotError
+from bddbot.errors import BotError, ParsingError
 
 BANK_PATH_1 = "banks/first.bank"
 BANK_PATH_2 = "banks/second.bank"

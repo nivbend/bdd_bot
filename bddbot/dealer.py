@@ -12,9 +12,9 @@ from os import mkdir
 from subprocess import Popen, PIPE
 import logging
 import pickle
-from .bank import Bank, ParsingError
+from .bank import Bank
 from .config import DEFAULT_TEST_COMMAND
-from .errors import BotError
+from .errors import BotError, ParsingError
 
 STATE_PATH = ".bdd-dealer"
 

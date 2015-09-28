@@ -1,7 +1,9 @@
 """Test the bank module."""
 
 from nose.tools import assert_equal, assert_multi_line_equal, assert_raises, assert_in
-from bddbot.bank import Bank, BankParser, ParsingError
+from bddbot.bank import Bank
+from bddbot.parser import BankParser
+from bddbot.errors import ParsingError
 
 def test_without_header():
     """Test splitting feature files without headers."""
@@ -26,9 +28,9 @@ def test_multiline_text_error():
         "            This multiline text has no end!",
     ])
 
-    parser = BankParser()
+    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse(contents)
+        parser.parse()
 
     assert_in("multiline", error_context.exception.message.lower())
     assert_equal(4, error_context.exception.line)
@@ -39,9 +41,9 @@ def test_dangling_feature_tags():
         "@dangling",
     ])
 
-    parser = BankParser()
+    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse(contents)
+        parser.parse()
 
     assert_in("dangling tags", error_context.exception.message.lower())
     assert_equal(1, error_context.exception.line)
@@ -56,9 +58,9 @@ def test_dangling_scenario_tags():
         "        @this_is_bad",
     ])
 
-    parser = BankParser()
+    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse(contents)
+        parser.parse()
 
     assert_in("dangling tags", error_context.exception.message.lower())
     assert_equal(5, error_context.exception.line)
