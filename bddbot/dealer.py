@@ -10,7 +10,6 @@ feature file 'features/awesome.feature'.
 from os.path import dirname, isdir, join
 from os import mkdir, listdir
 from subprocess import Popen, PIPE
-from collections import OrderedDict
 import logging
 import pickle
 from .bank import Bank, ParsingError
@@ -31,13 +30,13 @@ class Dealer(object):
         self.__tests = tests
         self.__is_loaded = False
         self.__is_done = False
-        self.__banks = OrderedDict()
+        self.__banks = []
         self.__log = logging.getLogger(__name__)
 
         try:
             with open(STATE_PATH, "rb") as state:
                 self.__log.debug("Loading state")
-                self.__banks = pickle.load(state)
+                self.__banks.extend(pickle.load(state))
         except IOError:
             pass
         else:
@@ -49,7 +48,7 @@ class Dealer(object):
         if not self.__is_loaded:
             return False
 
-        return all(bank.is_done() for bank in self.__banks.itervalues())
+        return all(bank.is_done() for bank in self.__banks)
 
     def save(self):
         """Save the bot's state to file."""
@@ -86,23 +85,21 @@ class Dealer(object):
             self.load()
 
         # Unless it's the first scenario to be dealt, test all scenarios so far.
-        if not all(bank.is_fresh() for bank in self.__banks.itervalues()):
+        if not all(bank.is_fresh() for bank in self.__banks):
             if not self._are_tests_passing():
                 raise BotError("Can't deal while there are unimplemented scenarios")
 
         # Find the first bank that still has scenarios to deal.
-        (path, current_bank) = next(
-            ((path, bank) for (path, bank) in self.__banks.iteritems() if not bank.is_done()),
-            (None, None))
+        current_bank = next((bank for bank in self.__banks if not bank.is_done()), None)
 
         if not current_bank:
             # No more features to deal from.
             return
 
         if current_bank.is_fresh():
-            self._deal_first(path, current_bank)
+            self._deal_first(current_bank)
         else:
-            self._deal_another(path, current_bank)
+            self._deal_another(current_bank)
 
     def _load_directory(self, path):
         """Load all bank files under a given directory."""
@@ -118,13 +115,10 @@ class Dealer(object):
     def _load_file(self, path):
         """Load a bank file."""
         self.__log.info("Loading features bank '%s'", path)
-        output_path = path.replace("bank", "feature")
-        if not output_path.endswith(".feature"):
-            output_path += ".feature"
 
         try:
             with open(path, "r") as bank_input:
-                self.__banks[output_path] = Bank(bank_input.read())
+                self.__banks.append(Bank(path, bank_input.read()))
         except IOError:
             raise BotError("Couldn't open features bank '{:s}'".format(path))
         except ParsingError as parsing_error:
@@ -156,42 +150,48 @@ class Dealer(object):
         self.__log.info("All tests are passing")
         return True
 
-    def _deal_first(self, path, bank):
+    def _deal_first(self, bank):
         """Deal the very first scenario in the bank.
 
         This will create the feature file and fill it with the feature's text,
         background, etc. It implicitly calls load().
         """
-        self.__log.info("Dealing first scenario in '%s'", path)
+        self.__log.info("Dealing first scenario in '%s'", bank.output_path)
 
         try:
-            mkdir(dirname(path))
-            self.__log.debug("Created features directory '%s'", dirname(path))
+            mkdir(dirname(bank.output_path))
+            self.__log.debug("Created features directory '%s'", dirname(bank.output_path))
         except OSError:
             # Directory exists.
             pass
 
         try:
-            with open(path, "w") as features:
-                self.__log.info("Writing header from '%s': '%s'", path, bank.header.rstrip("\n"))
+            with open(bank.output_path, "w") as features:
+                self.__log.info(
+                    "Writing header from '%s': '%s'",
+                    bank.output_path,
+                    bank.header.rstrip("\n"))
                 features.write(bank.header)
 
-                self.__log.info("Writing feature from '%s': '%s'", path, bank.feature.rstrip("\n"))
+                self.__log.info(
+                    "Writing feature from '%s': '%s'",
+                    bank.output_path,
+                    bank.feature.rstrip("\n"))
                 features.write(bank.feature)
 
-                self.__write_next_scenario(features, path, bank)
+                self.__write_next_scenario(features, bank.output_path, bank)
         except IOError:
-            raise BotError("Couldn't write to '{:s}'".format(path))
+            raise BotError("Couldn't write to '{:s}'".format(bank.output_path))
 
-    def _deal_another(self, path, bank):
+    def _deal_another(self, bank):
         """Deal a new scenario (not the first one)."""
-        self.__log.info("Dealing scenario in '%s'", path)
+        self.__log.info("Dealing scenario in '%s'", bank.output_path)
 
         try:
-            with open(path, "ab") as features:
-                self.__write_next_scenario(features, path, bank)
+            with open(bank.output_path, "ab") as features:
+                self.__write_next_scenario(features, bank.output_path, bank)
         except IOError:
-            raise BotError("Couldn't write to '{:s}'".format(path))
+            raise BotError("Couldn't write to '{:s}'".format(bank.output_path))
 
     def __write_next_scenario(self, stream, path, bank):
         """Write the next scenario from the bank to the stream."""

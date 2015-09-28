@@ -66,7 +66,10 @@ def test_dangling_scenario_tags():
 def _check_split_bank(expected, text):
     """Compare two bank splits by their structure."""
     (expected_header, expected_feature, expected_scenarios) = expected
-    bank = Bank(text)
+    bank = Bank("/path/to/some.bank", text)
+
+    # Verify output path.
+    assert_equal("/path/to/some.feature", bank.output_path)
 
     # Verify header.
     assert_multi_line_equal(expected_header, bank.header)

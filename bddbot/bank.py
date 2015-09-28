@@ -178,13 +178,18 @@ class BankParser(object):
 
 class Bank(object):
     """Holds a bank file's parsed contents and allows access to its scenarios in order."""
-    def __init__(self, contents):
+    def __init__(self, bank_path, contents):
         parser = BankParser()
         (header, feature, scenarios) = parser.parse(contents)
 
+        self.__output_path = bank_path.replace("bank", "feature")
         self.__header = header
         self.__feature = feature
         self.__scenarios = [(False, scenario) for scenario in scenarios]
+
+        # Ensure output path's extension is 'feature'.
+        if not self.__output_path.endswith(".feature"):
+            self.__output_path += ".feature"
 
     def is_fresh(self):
         """Return True if no scenario was dealt yet.
@@ -199,6 +204,11 @@ class Bank(object):
         This also returns True if there aren't any scenarios.
         """
         return all(was_dealt for (was_dealt, _) in self.__scenarios)
+
+    @property
+    def output_path(self):
+        """The feature's path to write to."""
+        return self.__output_path
 
     @property
     def header(self):

@@ -510,7 +510,7 @@ class TestPersistency(BaseDealerTest):
             dealer.save()
 
         self.mocked_open.assert_called_once_with(STATE_PATH, "wb")
-        mocked_dump.assert_called_once_with({}, ANY)
+        mocked_dump.assert_called_once_with([], ANY)
         self.mocked_mkdir.assert_not_called()
         self.mocked_popen.assert_not_called()
 
@@ -542,11 +542,11 @@ class TestPersistency(BaseDealerTest):
         """Test resuming from a previous state."""
         self._mock_dealer_functions()
         mock_bank = create_autospec(Bank)
+        mock_bank.output_path = DEFAULT_FEATURE_PATH
         mock_bank.is_done.return_value = False
         mock_bank.is_fresh.return_value = False
         mock_bank.get_next_scenario.return_value = SCENARIO_1_2
-        state = OrderedDict([(DEFAULT_FEATURE_PATH, mock_bank), ])
-        with patch("bddbot.dealer.pickle.load", return_value = state) as mocked_load:
+        with patch("bddbot.dealer.pickle.load", return_value = [mock_bank, ]) as mocked_load:
             dealer = Dealer()
 
         self.mocked_open.assert_called_once_with(STATE_PATH, "rb")
@@ -572,8 +572,7 @@ class TestPersistency(BaseDealerTest):
         self.mocked_popen.assert_not_called()
 
         # Verify stored banks' states.
-        ((banks, _), _) = mocked_dump.call_args
-        (bank_1, bank_2) = (banks[self.FEATURE_PATH_1], banks[self.FEATURE_PATH_2])
+        (((bank_1, bank_2), _), _) = mocked_dump.call_args
         assert_equal(is_bank_1_fresh, bank_1.is_fresh())
         assert_equal(is_bank_1_done, bank_1.is_done())
         assert_equal("", bank_1.header)
