@@ -21,13 +21,8 @@ STATE_PATH = ".bdd-dealer"
 class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented."""
     def __init__(self, bank_paths = None, tests = None):
-        if not bank_paths:
-            bank_paths = []
-        if not tests:
-            tests = [DEFAULT_TEST_COMMAND.split(), ]
-
-        self.__bank_paths = bank_paths
-        self.__tests = tests
+        self.__bank_paths = bank_paths or []
+        self.__tests = tests or [DEFAULT_TEST_COMMAND.split(), ]
         self.__is_loaded = False
         self.__is_done = False
         self.__banks = []
@@ -107,10 +102,7 @@ class Dealer(object):
         self.__log.info("Loading features bank '%s'", path)
 
         try:
-            with open(path, "r") as bank_input:
-                self.__banks.append(Bank(path, bank_input.read()))
-        except IOError:
-            raise BotError("Couldn't open features bank '{:s}'".format(path))
+            self.__banks.append(Bank(path))
         except ParsingError as parsing_error:
             # Supply the bank path and re-raise.
             parsing_error.filename = path
@@ -186,6 +178,10 @@ class Dealer(object):
     def __write_next_scenario(self, stream, path, bank):
         """Write the next scenario from the bank to the stream."""
         scenario = bank.get_next_scenario()
+
+        # No scenarios in bank.
+        if not scenario:
+            return
 
         self.__log.info(
             "Writing scenario from '%s': '%s'",

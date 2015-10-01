@@ -1,11 +1,16 @@
 """Store banks' contents (feature test, scenarios, etc.)."""
 
 from .parser import parse_bank
+from .errors import BotError
 
 class Bank(object):
     """Holds a bank file's parsed contents and allows access to its scenarios in order."""
-    def __init__(self, bank_path, contents):
-        (header, feature, scenarios) = parse_bank(contents)
+    def __init__(self, bank_path):
+        try:
+            with open(bank_path, "r") as bank_contents:
+                (header, feature, scenarios) = parse_bank(bank_contents.read())
+        except IOError:
+            raise BotError("Couldn't open features bank '{:s}'".format(bank_path))
 
         self.__output_path = bank_path.replace("bank", "feature")
         self.__header = header
