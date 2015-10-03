@@ -1,56 +1,63 @@
 """Encapsulate configuration properties."""
 
-import yaml
+from ConfigParser import SafeConfigParser as ConfigParser
+from .errors import BotError
 
-DEFAULT_CONFIG_FILENAME = "bddbot.yml"
-DEFAULT_BANK_DIRECTORY = "banks"
+DEFAULT_CONFIG_FILENAME = "bddbot.cfg"
 DEFAULT_TEST_COMMAND = "behave"
+
+class ConfigError(BotError):
+    # pylint: disable=missing-docstring
+    pass
 
 class BotConfiguration(object):
     """Load configuration from file or return default values."""
     def __init__(self, filename = None):
+        config = ConfigParser()
+
         if not filename:
             filename = DEFAULT_CONFIG_FILENAME
 
         try:
-            with open(filename, "r") as config:
-                contents = config.read()
-            self.__parameters = yaml.load(contents)
+            with open(filename, "r") as handle:
+                config.readfp(handle, filename)
         except IOError:
-            self.__parameters = None
+            pass
 
-        if not self.__parameters:
-            self.__parameters = {}
+        self.__banks = _get_banks(config)
+        self.__test_commands = _get_test_commands(config)
 
     @property
-    def bank(self):
-        """Return the features bank's path."""
-        value = self.__parameters.get("bank", DEFAULT_BANK_DIRECTORY)
-
-        if not value:
-            value = DEFAULT_BANK_DIRECTORY
-
-        if isinstance(value, str):
-            yield value
-        else:
-            for path in value:
-                yield path
+    def banks(self):
+        """Features bank paths."""
+        return self.__banks
 
     @property
     def test_commands(self):
-        """Generate the commands to run BDD tests with.
+        """The commands to run BDD tests with.
 
         Test commands are generated as a list of command and arguments, the kind the subprocess
         module can later take (for example, `["behave", "--no-multiline", "--format=progress", ]`).
         """
-        commands = self.__parameters.get("test_command", DEFAULT_TEST_COMMAND)
+        return self.__test_commands
 
-        if not commands:
-            yield DEFAULT_TEST_COMMAND.split()
+def _get_banks(config):
+    """get the feature banks' paths from configuration."""
+    if not config.has_option("paths", "bank"):
+        return []
 
-        elif isinstance(commands, str):
-            yield commands.split()
+    paths = config.get("paths", "bank").splitlines()
+    if not paths:
+        raise ConfigError("No features banks specified")
 
-        else:
-            for command in commands:
-                yield command.split()
+    # Return non-empty paths.
+    return [path for path in paths if path]
+
+def _get_test_commands(config):
+    """get the test commands from configuration."""
+    if not config.has_option("test", "run"):
+        return [DEFAULT_TEST_COMMAND.split(), ]
+
+    # Return non-empty commands.
+    commands = config.get("test", "run").splitlines()
+    return [command.split() for command in commands if command]

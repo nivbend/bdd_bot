@@ -1,20 +1,55 @@
 """Test the bank module."""
 
 from nose.tools import assert_equal, assert_multi_line_equal, assert_raises, assert_in
-from bddbot.bank import Bank, BankParser, ParsingError
+from mock import patch
+from mock_open import MockOpen
+from bddbot.bank import Bank
+from bddbot.parser import BankParser
+from bddbot.errors import BotError, ParsingError
+
+BANK_PATH = "/path/to/some.bank"
+FEATURE_PATH = BANK_PATH.replace("bank", "feature")
+
+@patch("bddbot.bank.open", new_callable = MockOpen)
+def test_error_openning_file(mocked_open):
+    """Exceptions openning a bank file are translated to BotErrors."""
+    mocked_open[BANK_PATH].side_effect = IOError()
+
+    with assert_raises(BotError) as error_context:
+        Bank(BANK_PATH)
+
+    mocked_open.assert_called_once_with(BANK_PATH, "r")
+    mocked_open[BANK_PATH].read.assert_not_called()
+    assert_in("couldn't open features bank", error_context.exception.message.lower())
+
+@patch("bddbot.bank.open", new_callable = MockOpen)
+def test_error_reading_file(mocked_open):
+    """Exceptions reading from a bank file are translated to BotErrors."""
+    mocked_open[BANK_PATH].read.side_effect = IOError()
+
+    with assert_raises(BotError) as error_context:
+        Bank(BANK_PATH)
+
+    mocked_open.assert_called_once_with(BANK_PATH, "r")
+    mocked_open[BANK_PATH].read.assert_called_once_with()
+    assert_in("couldn't open features bank", error_context.exception.message.lower())
 
 def test_without_header():
     """Test splitting feature files without headers."""
-    for (contents, feature, scenarios) in TEST_CASES:
-        yield (_check_split_bank, ("", feature, scenarios), contents)
+    for (contents, is_fresh, is_done, feature, scenarios) in TEST_CASES:
+        yield (_check_split_bank,
+               ("", feature, scenarios),
+               contents,
+               is_fresh, is_done)
 
 def test_with_header():
     """Test splitting feature files with headers."""
     header_text = "Some header text."
-    for (contents, feature, scenarios) in TEST_CASES:
+    for (contents, is_fresh, is_done, feature, scenarios) in TEST_CASES:
         yield (_check_split_bank,
                (header_text + "\n", feature, scenarios),
-               "\n".join([header_text, contents, ]))
+               "\n".join([header_text, contents, ]),
+               is_fresh, is_done)
 
 def test_multiline_text_error():
     """If a multiline text is started but not finished, raise a parser error."""
@@ -26,9 +61,9 @@ def test_multiline_text_error():
         "            This multiline text has no end!",
     ])
 
-    parser = BankParser()
+    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse(contents)
+        parser.parse()
 
     assert_in("multiline", error_context.exception.message.lower())
     assert_equal(4, error_context.exception.line)
@@ -39,9 +74,9 @@ def test_dangling_feature_tags():
         "@dangling",
     ])
 
-    parser = BankParser()
+    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse(contents)
+        parser.parse()
 
     assert_in("dangling tags", error_context.exception.message.lower())
     assert_equal(1, error_context.exception.line)
@@ -56,17 +91,29 @@ def test_dangling_scenario_tags():
         "        @this_is_bad",
     ])
 
-    parser = BankParser()
+    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse(contents)
+        parser.parse()
 
     assert_in("dangling tags", error_context.exception.message.lower())
     assert_equal(5, error_context.exception.line)
 
-def _check_split_bank(expected, text):
+def _check_split_bank(expected, text, is_fresh, is_done):
     """Compare two bank splits by their structure."""
     (expected_header, expected_feature, expected_scenarios) = expected
-    bank = Bank(text)
+
+    mocked_open = MockOpen()
+    mocked_open[BANK_PATH].read_data = text
+    with patch("bddbot.bank.open", mocked_open):
+        bank = Bank(BANK_PATH)
+
+    assert_equal(is_fresh, bank.is_fresh())
+    assert_equal(is_done, bank.is_done())
+    mocked_open.assert_called_once_with(BANK_PATH, "r")
+    mocked_open[BANK_PATH].read.assert_called_once_with()
+
+    # Verify output path.
+    assert_equal(FEATURE_PATH, bank.output_path)
 
     # Verify header.
     assert_multi_line_equal(expected_header, bank.header)
@@ -89,10 +136,10 @@ def _check_split_bank(expected, text):
 # pylint: disable=bad-continuation
 TEST_CASES = [
     # Empty file.
-    ("", "", []),
+    ("", False, True, "", []),
 
     # A feature with no scenarios.
-    ("Feature: Empty feature", "Feature: Empty feature", []),
+    ("Feature: Empty feature", False, True, "Feature: Empty feature", []),
 
     # A feature with a single scenario.
     ("\n".join([
@@ -105,6 +152,7 @@ TEST_CASES = [
          "        When stuff happen",
          "        Then the future will come to be",
      ]),
+     True, False,
      "\n".join([
          "Feature: A simple feature",
          "    This is the feature's description.",
@@ -127,6 +175,7 @@ TEST_CASES = [
          "    Scenario: The second scenario",
          "    Scenario: The third scenario",
      ]),
+     True, False,
      "Feature: A slightly bigger feature\n",
      ["    Scenario: The first scenario\n",
       "    Scenario: The second scenario\n",
@@ -141,6 +190,7 @@ TEST_CASES = [
          "Feature: Having tags",
          "    Scenario: Something to test",
      ]),
+     True, False,
      "\n".join([
          "@awesome",
          "@cool @groovy",
@@ -201,6 +251,7 @@ TEST_CASES = [
          "        When we try to challenge our parser",
          "        Then it won't fail us",
      ]),
+     True, False,
      "\n".join([
          "Feature: A very complex feature indeed",
          "    If we can parse this baby, we can probably parse anything.",

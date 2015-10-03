@@ -3,6 +3,13 @@ Feature: Initialize Bot
     As a repository's features moderator
     I want to deal the first scenario in a feature file
 
+    Background: Configuration file
+        Given the configuration file:
+            """
+            [paths]
+            bank: banks/default.bank
+            """
+
     Scenario: One feature, no scenarios
         Given the features bank "banks/default.bank":
             """
@@ -227,11 +234,12 @@ Feature: Initialize Bot
         Given the features bank "banks/default.bank":
             """
             Feature: Making pizza
+                @easy
                 Scenario: Neapolitan
                     Given we have San Marzano tomatoes
                     And we have mozzarella di bufala Campana
                     When we put it all together
-                    Then We speak-a lik-a Italians!
+                    Then we speak-a lik-a Italians!
 
                 @vegetarian @vegan
                 Scenario: Meatless Monday
@@ -239,15 +247,16 @@ Feature: Initialize Bot
                     And we have tomatoes
                     But we don't have any dairy products
                     When we put it all together
-                    Then We have ourselves a pizza without any meat
+                    Then we have ourselves a pizza without any meat
             """
         When the first scenario is dealt
         Then "features/default.feature" contains:
             """
             Feature: Making pizza
+                @easy
                 Scenario: Neapolitan
                     Given we have San Marzano tomatoes
                     And we have mozzarella di bufala Campana
                     When we put it all together
-                    Then We speak-a lik-a Italians!
+                    Then we speak-a lik-a Italians!
             """

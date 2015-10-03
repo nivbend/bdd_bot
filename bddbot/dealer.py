@@ -7,28 +7,31 @@ Features are written incrementaly from a bank file ("*.bank") to a corrosponding
 file ("*.feature"). So for example, the bank file 'banks/awesome.bank' will be translated to the
 feature file 'features/awesome.feature'.
 """
-from os.path import dirname, isdir, join
-from os import mkdir, getcwd, listdir
+from os.path import dirname
+from os import mkdir
 from subprocess import Popen, PIPE
-from collections import OrderedDict
+import logging
 import pickle
 from .bank import Bank
-from .config import BotConfiguration, DEFAULT_CONFIG_FILENAME
-from .errors import BotError
+from .config import DEFAULT_TEST_COMMAND
+from .errors import BotError, ParsingError
 
 STATE_PATH = ".bdd-dealer"
 
 class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented."""
-    def __init__(self, config = DEFAULT_CONFIG_FILENAME):
-        self.__config = BotConfiguration(config)
+    def __init__(self, bank_paths = None, tests = None):
+        self.__bank_paths = bank_paths or []
+        self.__tests = tests or [DEFAULT_TEST_COMMAND.split(), ]
         self.__is_loaded = False
         self.__is_done = False
-        self.__banks = OrderedDict()
+        self.__banks = []
+        self.__log = logging.getLogger(__name__)
 
         try:
             with open(STATE_PATH, "rb") as state:
-                self.__banks = pickle.load(state)
+                self.__log.debug("Loading state")
+                self.__banks.extend(pickle.load(state))
         except IOError:
             pass
         else:
@@ -37,10 +40,14 @@ class Dealer(object):
     @property
     def is_done(self):
         """Return True if no more scenarios are left to deal."""
-        return all(bank.is_done() for bank in self.__banks.itervalues())
+        if not self.__is_loaded:
+            return False
+
+        return all(bank.is_done() for bank in self.__banks)
 
     def save(self):
         """Save the bot's state to file."""
+        self.__log.debug("Saving state")
         with open(STATE_PATH, "wb") as state:
             pickle.dump(self.__banks, state)
 
@@ -49,11 +56,14 @@ class Dealer(object):
         if self.__is_loaded:
             return
 
-        for path in self.__config.bank:
-            if isdir(path):
-                self._load_directory(path)
-            else:
+        self.__log.debug("Loading banks")
+
+        if self.__bank_paths:
+            for path in self.__bank_paths:
                 self._load_file(path)
+
+        else:
+            self.__log.warning("No banks")
 
         self.__is_loaded = True
 
@@ -70,42 +80,37 @@ class Dealer(object):
         if not self.__is_loaded:
             self.load()
 
+        # Unless it's the first scenario to be dealt, test all scenarios so far.
+        if not all(bank.is_fresh() for bank in self.__banks):
+            if not self._are_tests_passing():
+                raise BotError("Can't deal while there are unimplemented scenarios")
+
         # Find the first bank that still has scenarios to deal.
-        (path, current_bank) = next(
-            ((path, bank) for (path, bank) in self.__banks.iteritems() if not bank.is_done()),
-            (None, None))
+        current_bank = next((bank for bank in self.__banks if not bank.is_done()), None)
 
         if not current_bank:
             # No more features to deal from.
             return
 
         if current_bank.is_fresh():
-            self._deal_first(path, current_bank)
-        elif self._are_tests_passing():
-            self._deal_another(path, current_bank)
+            self._deal_first(current_bank)
         else:
-            raise BotError("Can't deal while there are unimplemented scenarios")
-
-    def _load_directory(self, path):
-        """Load all bank files under a given directory."""
-        for filename in listdir(path):
-            if not filename.endswith(".bank"):
-                continue
-
-            filename = join(path, filename)
-            self._load_file(filename)
+            self._deal_another(current_bank)
 
     def _load_file(self, path):
         """Load a bank file."""
-        output_path = path.replace("bank", "feature")
-        if not output_path.endswith(".feature"):
-            output_path += ".feature"
+        self.__log.info("Loading features bank '%s'", path)
 
         try:
-            with open(path, "r") as bank_input:
-                self.__banks[output_path] = Bank(bank_input.read())
-        except IOError:
-            raise BotError("No features bank in {:s}".format(getcwd()))
+            self.__banks.append(Bank(path))
+        except ParsingError as parsing_error:
+            # Supply the bank path and re-raise.
+            parsing_error.filename = path
+
+            self.__log.exception(
+                "Parsing error in %s:%d:%s",
+                path, parsing_error.line, parsing_error.filename)
+            raise
 
     def _are_tests_passing(self):
         """Verify that all scenarios were implemented using `behave`.
@@ -113,42 +118,73 @@ class Dealer(object):
         This is done by calling each testing command (by default, only "behave") in order.
         If any of them fail, the result is False.
         """
-        for command in self.__config.test_commands:
+        for command in self.__tests:
             process = Popen(command, stdout = PIPE, stderr = PIPE)
-            process.wait()
+            (stdout, stderr) = process.communicate()
 
             # pylint: disable=superfluous-parens
             if (0 != process.returncode):
+                self.__log.warning(
+                    "\n".join(["Test '%s' failed", "stdout = %s", "stderr = %s", ]),
+                    " ".join(command), stdout, stderr)
                 return False
 
+        self.__log.info("All tests are passing")
         return True
 
-    @staticmethod
-    def _deal_first(path, bank):
+    def _deal_first(self, bank):
         """Deal the very first scenario in the bank.
 
         This will create the feature file and fill it with the feature's text,
         background, etc. It implicitly calls load().
         """
+        self.__log.info("Dealing first scenario in '%s'", bank.output_path)
+
         try:
-            mkdir(dirname(path))
+            mkdir(dirname(bank.output_path))
+            self.__log.debug("Created features directory '%s'", dirname(bank.output_path))
         except OSError:
             # Directory exists.
             pass
 
         try:
-            with open(path, "w") as features:
+            with open(bank.output_path, "w") as features:
+                self.__log.info(
+                    "Writing header from '%s': '%s'",
+                    bank.output_path,
+                    bank.header.rstrip("\n"))
                 features.write(bank.header)
-                features.write(bank.feature)
-                features.write(bank.get_next_scenario())
-        except IOError:
-            raise BotError("Couldn't write to '{:s}'".format(path))
 
-    @staticmethod
-    def _deal_another(path, bank):
-        """Deal a new scenario (not the first one)."""
-        try:
-            with open(path, "ab") as features:
-                features.write(bank.get_next_scenario())
+                self.__log.info(
+                    "Writing feature from '%s': '%s'",
+                    bank.output_path,
+                    bank.feature.rstrip("\n"))
+                features.write(bank.feature)
+
+                self.__write_next_scenario(features, bank.output_path, bank)
         except IOError:
-            raise BotError("Couldn't write to '{:s}'".format(path))
+            raise BotError("Couldn't write to '{:s}'".format(bank.output_path))
+
+    def _deal_another(self, bank):
+        """Deal a new scenario (not the first one)."""
+        self.__log.info("Dealing scenario in '%s'", bank.output_path)
+
+        try:
+            with open(bank.output_path, "ab") as features:
+                self.__write_next_scenario(features, bank.output_path, bank)
+        except IOError:
+            raise BotError("Couldn't write to '{:s}'".format(bank.output_path))
+
+    def __write_next_scenario(self, stream, path, bank):
+        """Write the next scenario from the bank to the stream."""
+        scenario = bank.get_next_scenario()
+
+        # No scenarios in bank.
+        if not scenario:
+            return
+
+        self.__log.info(
+            "Writing scenario from '%s': '%s'",
+            path, scenario.splitlines()[0].lstrip())
+
+        stream.write(scenario)

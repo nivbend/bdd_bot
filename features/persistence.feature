@@ -1,9 +1,10 @@
 Feature: Persistent State
+    Scenarios are dealt with separate calls to the bot tool
     In order to work on a project for a period of time
     As a developer
     I want the bot to keep track of dealt scenarios between individual runs
 
-    Background: The steps directory exists (mandatory for running `behave`)
+    Background:
         Given a directory "features/steps"
         And the features bank "banks/movie.bank":
             """
@@ -16,11 +17,12 @@ Feature: Persistent State
             Feature: Reading a book
                 Scenario: In bed
             """
-        And the file "bddbot.yml" contains:
+        And the configuration file:
             """
+            [paths]
             bank:
-                - banks/movie.bank
-                - banks/book.bank
+                banks/movie.bank
+                banks/book.bank
             """
 
     Scenario: Deal another scenario after a restart
