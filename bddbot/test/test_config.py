@@ -48,7 +48,7 @@ def test_multiple_options(mock_open):
     assert_equal([bank_path, ], config.banks)
 
 @patch("bddbot.config.open", new_callable = MockOpen)
-def test_custom_config_file(mock_open):
+def test_custom_config_path(mock_open):
     """Test reading from a custom path."""
     config_path = "/path/to/bddbotrc.cfg"
     mock_open[config_path].read_data = ""
@@ -82,10 +82,10 @@ class TestBankPath(object):
         assert_in("no features banks", error_context.exception.message.lower())
         mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
 
-    def test_supply_bank_path(self):
+    def test_set_bank_path(self):
         """Setting the bank value should set the appropriate attribute."""
         for (bank_paths, expected_paths) in self.CASES:
-            yield self._check_bank_path, bank_paths, expected_paths
+            yield (self._check_bank_path, bank_paths, expected_paths)
 
     @staticmethod
     @patch("bddbot.config.open", new_callable = MockOpen)
@@ -113,10 +113,10 @@ class TestBDDTestCommands(object):
         (["test_1", "test_2 --foo", ],      [["test_1", ], ["test_2", "--foo", ], ]),
     ]
 
-    def test_supplying_test_commands(self):
+    def test_set_test_commands(self):
         """Setting the test_command should set the appropriate attribute."""
         for (test_commands, expected_commands) in self.CASES:
-            yield self._check_test_command, test_commands, expected_commands
+            yield (self._check_test_command, test_commands, expected_commands)
 
     @staticmethod
     @patch("bddbot.config.open", new_callable = MockOpen)

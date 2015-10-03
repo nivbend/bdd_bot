@@ -199,16 +199,16 @@ class TestConfiguration(BaseDealerTest):
     def setup(self):
         self._mock_dealer_functions()
 
-    def test_setting_bank_file_path(self):
+    def test_set_bank(self):
         """Set the path to the bank as a single file."""
         for (bank_path, expected_feature_path) in self.BANK_FILE_PATHS:
-            yield self._check_setting_bank_file_path, bank_path, expected_feature_path
+            yield (self._check_set_bank, bank_path, expected_feature_path)
 
-    def test_setting_multiple_bank_file_paths(self):
+    def test_set_multiple_banks(self):
         """Setting multiple bank file paths will read from all of them."""
         self._load_dealer(banks = [BANK_PATH_1, BANK_PATH_2, ])
 
-    def test_setting_test_command(self):
+    def test_set_test_command(self):
         """Using custom test commands to verify scenarios."""
         test_command_1 = ["some_test", ]
         test_command_2 = ["another_test", "--awesome", ]
@@ -225,7 +225,7 @@ class TestConfiguration(BaseDealerTest):
 
         assert_equal([test_command_1, test_command_2, ], popen_calls)
 
-    def _check_setting_bank_file_path(self, bank_path, expected_feature_path):
+    def _check_set_bank(self, bank_path, expected_feature_path):
         # pylint: disable=missing-docstring
         self._load_dealer(banks = [bank_path, ])
 
@@ -270,7 +270,7 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_popen.assert_not_called()
 
     @patch("bddbot.dealer.mkdir")
-    def test_cant_open_features_file_for_writing(self, mocked_mkdir):
+    def test_failed_open(self, mocked_mkdir):
         """Capture exceptions in open()."""
         self._load_dealer()
 
@@ -290,7 +290,7 @@ class TestDealFirst(BaseDealerTest):
         self.mocked_popen.assert_not_called()
 
     @patch("bddbot.dealer.mkdir")
-    def test_cant_write_to_feature_file(self, mocked_mkdir):
+    def test_failed_write(self, mocked_mkdir):
         """Capture exceptions in write()."""
         self._load_dealer()
 
@@ -317,7 +317,7 @@ class TestDealFirst(BaseDealerTest):
         self._deal(FEATURE_1, SCENARIO_1_1)
 
     @patch("bddbot.dealer.mkdir")
-    def test_features_directory_already_exists(self, mocked_mkdir):
+    def test_features_directory_exists(self, mocked_mkdir):
         """Test deal() works even if the features directory already exist."""
         self._load_dealer()
 
@@ -471,8 +471,8 @@ class TestPersistency(BaseDealerTest):
     def test_save(self):
         """Verify a call to save with or without loading banks."""
         for banks in ([], [BANK_PATH_1, ], [BANK_PATH_1, BANK_PATH_2, ]):
-            yield self._check_save, False, banks, []
-            yield self._check_save, True, banks, banks
+            yield (self._check_save, False, banks, [])
+            yield (self._check_save, True, banks, banks)
 
     def test_resume(self):
         """Test resuming from a previous state."""
