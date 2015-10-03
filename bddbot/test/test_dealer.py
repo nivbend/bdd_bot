@@ -316,20 +316,6 @@ class TestDealFirst(BaseDealerTest):
         self._setup_bank(BANK_PATH_1, True, False, "", FEATURE_1 + "\n", SCENARIO_1_1)
         self._deal(FEATURE_1, SCENARIO_1_1)
 
-    def test_empty_features_bank(self):
-        """Dealing from an empty feature file."""
-        self._load_dealer()
-
-        self._setup_bank(BANK_PATH_1, True, False, "", "", None)
-        self._deal("", None)
-
-    def test_feature_with_no_scenarios(self):
-        """Dealing an 'empty' feature, with no scenarios works properly."""
-        self._load_dealer()
-
-        self._setup_bank(BANK_PATH_1, True, False, "", "Feature: An empty feature", None)
-        self._deal("Feature: An empty feature", None)
-
     @patch("bddbot.dealer.mkdir")
     def test_features_directory_already_exists(self, mocked_mkdir):
         """Test deal() works even if the features directory already exist."""
@@ -351,7 +337,10 @@ class TestDealNext(BaseDealerTest):
 
     @patch("bddbot.dealer.mkdir")
     def test_no_more_scenarios(self, mocked_mkdir):
-        """If no more scenarios to deal, mark as done."""
+        """If no more scenarios to deal, mark as done.
+
+        This includes empty banks and banks with no scenarios.
+        """
         self._setup_bank(BANK_PATH_1, False, True, None, None, None)
         self.mocked_popen.return_value.returncode = 0
 

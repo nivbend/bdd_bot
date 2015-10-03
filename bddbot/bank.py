@@ -24,8 +24,11 @@ class Bank(object):
     def is_fresh(self):
         """Return True if no scenario was dealt yet.
 
-        This also returns True if there aren't any scenarios.
+        This returns False if there aren't any scenarios.
         """
+        if not self.__scenarios:
+            return False
+
         return not any(was_dealt for (was_dealt, _) in self.__scenarios)
 
     def is_done(self):
