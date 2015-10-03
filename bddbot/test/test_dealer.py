@@ -379,9 +379,37 @@ class TestDealNext(BaseDealerTest):
 
 class TestDealFromMultipleBanks(BaseDealerTest):
     """Test dealing from multiple banks."""
-    def test_deal_from_second_bank(self):
-        """When the first bank is done, deal from the second if available."""
+    SCENARIO_COUNTS = [3, 2, 1, 1, 5, ]
+    BANKS = ["banks/{:d}.bank".format(i + 1) for i in xrange(len(SCENARIO_COUNTS))]
+
+    def setup(self):
         self._mock_dealer_functions()
+
+    def test_should_not_deal_from_second_bank(self):
+        """If tests are failing, don't deal from the second bank."""
+        self._load_dealer(banks = [BANK_PATH_1, BANK_PATH_2, ])
+
+        self._setup_bank(BANK_PATH_1, True, False, "", FEATURE_1 + "\n", SCENARIO_1_1)
+        self._setup_bank(BANK_PATH_2, True, False, None, None, None)
+        self._deal(FEATURE_1, SCENARIO_1_1, BANK_PATH_1)
+
+        self._setup_bank(BANK_PATH_1, False, True, None, None, None)
+        self._setup_bank(BANK_PATH_2, True, False, "", FEATURE_2 + "\n", SCENARIO_2_1)
+        self.mocked_popen.return_value.returncode = -1
+
+        with assert_raises(BotError) as error_context:
+            self.dealer.deal()
+
+        assert_in("can't deal", error_context.exception.message.lower())
+        self.mocked_open.assert_not_called()
+        self.mocked_bank[BANK_PATH_1].is_fresh.assert_called_once_with()
+        self.mocked_bank[BANK_PATH_1].is_done.assert_not_called()
+        self.mocked_bank[BANK_PATH_1].get_next_scenario.assert_not_called()
+        self.mocked_popen.assert_any_call(DEFAULT_TEST_COMMAND.split(), stdout = ANY, stderr = ANY)
+        self.mocked_popen.return_value.communicate.assert_called_once_with()
+
+    def test_should_deal_from_second_bank(self):
+        """When the first bank is done, deal from the second if available."""
         self._load_dealer(banks = [BANK_PATH_1, BANK_PATH_2, ])
 
         self._setup_bank(BANK_PATH_1, True, False, "", FEATURE_1 + "\n", SCENARIO_1_1)
@@ -393,6 +421,47 @@ class TestDealFromMultipleBanks(BaseDealerTest):
         self._setup_bank(BANK_PATH_2, True, False, "", FEATURE_2 + "\n", SCENARIO_2_1)
         popen_calls = self._deal(FEATURE_2, SCENARIO_2_1, BANK_PATH_2)
         assert_equal([DEFAULT_TEST_COMMAND.split(), ], popen_calls)
+
+    def test_deal_from_many(self):
+        """Test dealing from multiple banks one after the other."""
+        self._load_dealer(banks = self.BANKS)
+
+        for bank in xrange(len(self.BANKS)):
+            for scenario in xrange(self.SCENARIO_COUNTS[bank]):
+                # Prepare all bank mocks, before and after.
+                for previous_bank in xrange(len(self.BANKS[:bank])):
+                    self.__setup_bank_at(previous_bank, None, False, True)
+
+                self.__setup_bank_at(bank, scenario, 0 == scenario, False)
+
+                for next_bank in xrange(bank + 1, len(self.BANKS)):
+                    self.__setup_bank_at(next_bank, 0, True, False)
+
+                # Deal scenario.
+                self._deal(
+                    None if 0 < scenario else self.__feature(bank),
+                    self.__scenario(bank, scenario),
+                    self.BANKS[bank])
+
+    def __setup_bank_at(self, i, j, is_fresh, is_done):
+        # pylint: disable=missing-docstring
+        self._setup_bank(
+            self.BANKS[i],
+            is_fresh,
+            is_done,
+            None if not is_fresh else "",
+            None if not is_fresh else self.__feature(i) + "\n",
+            None if is_done else self.__scenario(i, j))
+
+    @staticmethod
+    def __feature(i):
+        # pylint: disable=missing-docstring
+        return "Feature: Feature #{:d}".format(i + 1)
+
+    @staticmethod
+    def __scenario(i, j):
+        # pylint: disable=missing-docstring
+        return "Scenario: Scenario #{:d}-{:d}\n".format(i + 1, j + 1)
 
 class TestPersistency(BaseDealerTest):
     """Test storing and loading the bot's state."""
