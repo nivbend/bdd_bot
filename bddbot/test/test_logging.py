@@ -31,7 +31,7 @@ def _create_dealer(banks = None):
         banks = [BANK_PATH_1, BANK_PATH_2, ]
 
     with patch("bddbot.dealer.logging.getLogger") as mock_log:
-        dealer = Dealer(banks)
+        dealer = Dealer(banks, [DEFAULT_TEST_COMMAND.split(), ])
 
     mock_log.assert_called_once_with(ANY)
 

@@ -13,16 +13,15 @@ from subprocess import Popen, PIPE
 import logging
 import pickle
 from .bank import Bank
-from .config import DEFAULT_TEST_COMMAND
 from .errors import BotError, ParsingError
 
 STATE_PATH = ".bdd-dealer"
 
 class Dealer(object):
     """Manage banks of features to dispense whenever a scenario is implemented."""
-    def __init__(self, bank_paths = None, tests = None):
-        self.__bank_paths = bank_paths or []
-        self.__tests = tests or [DEFAULT_TEST_COMMAND.split(), ]
+    def __init__(self, bank_paths, tests):
+        self.__bank_paths = bank_paths
+        self.__tests = tests
         self.__is_loaded = False
         self.__is_done = False
         self.__banks = []

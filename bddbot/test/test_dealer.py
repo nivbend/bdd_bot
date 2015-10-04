@@ -53,27 +53,27 @@ class BaseDealerTest(object):
 
         patcher.start()
 
-    def _create_dealer(self, banks, test_commands = None):
+    def _create_dealer(self, banks, tests):
         """Create a new dealer instance without loading state."""
-        if not test_commands:
-            test_commands = [DEFAULT_TEST_COMMAND.split(), ]
+        if tests is None:
+            tests = [DEFAULT_TEST_COMMAND.split(), ]
 
         self.mocked_open[STATE_PATH].side_effect = IOError()
-        self.dealer = Dealer(bank_paths = banks, tests = test_commands)
+        self.dealer = Dealer(banks, tests)
 
         self.mocked_open.assert_called_once_with(STATE_PATH, "rb")
 
         self._reset_mocks()
 
-    def _load_dealer(self, banks = None, test_commands = None):
+    def _load_dealer(self, banks = None, tests = None):
         """Simulate a call to load() and verify success."""
         if banks is None:
             banks = [BANK_PATH_1, ]
-        if not test_commands:
-            test_commands = [DEFAULT_TEST_COMMAND.split(), ]
+        if not tests:
+            tests = [DEFAULT_TEST_COMMAND.split(), ]
 
         # Setup and call load().
-        self._create_dealer(banks, test_commands)
+        self._create_dealer(banks, tests)
         self.dealer.load()
 
         # Verify calls to mocks.
@@ -214,7 +214,7 @@ class TestConfiguration(BaseDealerTest):
         test_command_1 = ["some_test", ]
         test_command_2 = ["another_test", "--awesome", ]
 
-        self._load_dealer(test_commands = [test_command_1, test_command_2, ])
+        self._load_dealer(tests = [test_command_1, test_command_2, ])
 
         self._setup_bank(BANK_PATH_1, True, False, "", FEATURE_1 + "\n", SCENARIO_1_1 + "\n")
         popen_calls = self._deal(FEATURE_1, SCENARIO_1_1 + "\n")
@@ -487,7 +487,7 @@ class TestPersistency(BaseDealerTest):
         # Load a dealer's state.
         with patch("bddbot.dealer.pickle.load") as mocked_load:
             mocked_load.return_value = self.mocked_bank.values()
-            self.dealer = Dealer()
+            self.dealer = Dealer([], [DEFAULT_TEST_COMMAND.split(), ])
 
         self.mocked_open.assert_called_once_with(STATE_PATH, "rb")
         mocked_load.assert_called_once_with(ANY)
@@ -503,7 +503,7 @@ class TestPersistency(BaseDealerTest):
     def _check_save(self, should_load, bank_paths, expected_banks):
         # pylint: disable=missing-docstring
         if not should_load:
-            self._create_dealer(bank_paths)
+            self._create_dealer(bank_paths, None)
         else:
             self._load_dealer(banks = bank_paths)
 
