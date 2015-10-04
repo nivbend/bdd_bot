@@ -6,13 +6,10 @@ from testfixtures import TempDirectory
 from mock import patch, call, ANY
 import pickle
 from bddbot.dealer import Dealer, STATE_PATH
-from bddbot.config import DEFAULT_TEST_COMMAND
+from bddbot.config import TEST_COMMAND
 from bddbot.errors import BotError, ParsingError
-
-BANK_PATH_1 = "banks/first.bank"
-BANK_PATH_2 = "banks/second.bank"
-FEATURE_PATH_1 = BANK_PATH_1.replace("bank", "feature")
-FEATURE_PATH_2 = BANK_PATH_2.replace("bank", "feature")
+from bddbot.test.constants import BANK_PATH_1, BANK_PATH_2, FEATURE_PATH_1, FEATURE_PATH_2
+from bddbot.test.constants import DEFAULT_TEST_COMMANDS
 
 (HEADER_1, FEATURE_1, SCENARIO_1_1) = (
     "# Header",
@@ -25,77 +22,65 @@ FEATURE_PATH_2 = BANK_PATH_2.replace("bank", "feature")
     "    Scenario: Scenario 2.2",
     "        Some text under the scenario")
 
-def _create_dealer(banks = None):
-    """Create a new dealer and return it and the mocked-out logger instance."""
-    if banks is None:
-        banks = [BANK_PATH_1, BANK_PATH_2, ]
-
-    with patch("bddbot.dealer.logging.getLogger") as mock_log:
-        dealer = Dealer(banks, [DEFAULT_TEST_COMMAND.split(), ])
-
-    mock_log.assert_called_once_with(ANY)
-
-    # Return the dealer and the logger objects.
-    return (dealer, mock_log.return_value)
-
 class TestDealerLogging(object):
-    """Test and verify log messages during a dealer's execution."""
+    def __init__(self):
+        self.sandbox = None
+        self.dealer = None
+        self.mocked_log = None
+
     def setup(self):
-        # pylint: disable=missing-docstring, attribute-defined-outside-init
         self.sandbox = TempDirectory()
         chdir(self.sandbox.path)
 
     def teardown(self):
-        # pylint: disable=missing-docstring
         self.sandbox.cleanup()
 
+        self.dealer = None
+        self.mocked_log = None
+
     def test_state(self):
-        """Check state-related messages."""
         self.sandbox.write(STATE_PATH, pickle.dumps({}))
 
-        # Verify loading log message.
-        (dealer, mocked_log) = _create_dealer()
+        self._create_dealer()
 
-        mocked_log.debug.assert_called_once_with("Loading state")
+        # Verify loading log message.
+        self.mocked_log.debug.assert_called_once_with("Loading state")
 
         # Verify storing log message.
-        dealer.save()
+        self.dealer.save()
 
-        mocked_log.debug.assert_called_with("Saving state")
+        self.mocked_log.debug.assert_called_with("Saving state")
 
         # No other messages should be printed.
-        mocked_log.info.assert_not_called()
-        mocked_log.warning.assert_not_called()
-        mocked_log.error.assert_not_called()
-        mocked_log.critical.assert_not_called()
+        self.mocked_log.info.assert_not_called()
+        self.mocked_log.warning.assert_not_called()
+        self.mocked_log.error.assert_not_called()
+        self.mocked_log.critical.assert_not_called()
 
     def test_no_banks(self):
-        # pylint: disable=no-self-use
-        """Output a warning if no banks were specified."""
-        (dealer, mocked_log) = _create_dealer([])
-        dealer.load()
+        # Output a warning if no banks were specified.
+        self._create_dealer([])
+        self.dealer.load()
 
-        mocked_log.assert_has_calls([
+        self.mocked_log.assert_has_calls([
             call.debug("Loading banks"),
             call.warning("No banks"),
             ])
 
     def test_load(self):
-        """Check bank loading messages."""
         self._write_banks()
 
-        (dealer, mocked_log) = _create_dealer()
-        dealer.load()
+        self._create_dealer()
+        self.dealer.load()
 
-        mocked_log.assert_has_calls([
+        self.mocked_log.assert_has_calls([
             call.debug("Loading banks"),
             call.info("Loading features bank '%s'", BANK_PATH_1),
             call.info("Loading features bank '%s'", BANK_PATH_2),
             ])
-        mocked_log.warning.assert_not_called()
+        self.mocked_log.warning.assert_not_called()
 
     def test_parsing_error(self):
-        """Test parsing error logging during load()."""
         bad_bank_path = "banks/bad.bank"
         self.sandbox.write(
             bad_bank_path,
@@ -106,12 +91,12 @@ class TestDealerLogging(object):
                 "        THIS IS AN UNFINISHED MULTILINE TEXT",
             ]))
 
-        (dealer, mocked_log) = _create_dealer([bad_bank_path, ])
+        self._create_dealer([bad_bank_path, ])
 
         with assert_raises(ParsingError):
-            dealer.load()
+            self.dealer.load()
 
-        mocked_log.assert_has_calls([
+        self.mocked_log.assert_has_calls([
             call.debug("Loading banks"),
             call.info("Loading features bank '%s'", bad_bank_path),
             call.exception("Parsing error in %s:%d:%s", bad_bank_path, 3, ANY),
@@ -119,18 +104,17 @@ class TestDealerLogging(object):
 
     @patch("bddbot.dealer.Popen")
     def test_deal(self, mocked_popen):
-        """Test dealing the scenarios from feature banks."""
         self._write_banks()
 
         # Load dealer, ignoring logs.
-        (dealer, mocked_log) = _create_dealer()
-        dealer.load()
-        mocked_log.reset_mock()
+        self._create_dealer()
+        self.dealer.load()
+        self.mocked_log.reset_mock()
 
         # Deal the first scenario.
-        dealer.deal()
+        self.dealer.deal()
 
-        mocked_log.assert_has_calls([
+        self.mocked_log.assert_has_calls([
             call.info("Dealing first scenario in '%s'", FEATURE_PATH_1),
             call.debug("Created features directory '%s'", "features"),
             call.info("Writing header from '%s': '%s'", FEATURE_PATH_1, HEADER_1),
@@ -138,14 +122,14 @@ class TestDealerLogging(object):
             call.info("Writing scenario from '%s': '%s'", FEATURE_PATH_1, SCENARIO_1_1.lstrip()),
             ])
 
-        mocked_log.reset_mock()
+        self.mocked_log.reset_mock()
 
         # Deal from a new feature.
         mocked_popen.return_value.returncode = 0
         mocked_popen.return_value.communicate.return_value = ("", "")
-        dealer.deal()
+        self.dealer.deal()
 
-        mocked_log.assert_has_calls([
+        self.mocked_log.assert_has_calls([
             call.info("All tests are passing"),
             call.info("Dealing first scenario in '%s'", FEATURE_PATH_2),
             call.info("Writing header from '%s': '%s'", FEATURE_PATH_2, ""),
@@ -153,35 +137,46 @@ class TestDealerLogging(object):
             call.info("Writing scenario from '%s': '%s'", FEATURE_PATH_2, SCENARIO_2_1.lstrip()),
             ])
 
-        mocked_log.reset_mock()
+        self.mocked_log.reset_mock()
 
         # Attempt to deal a new scenario before tests are passing.
         mocked_popen.return_value.returncode = -1
         mocked_popen.return_value.communicate.return_value = ("STDOUT", "STDERR")
 
         with assert_raises(BotError):
-            dealer.deal()
+            self.dealer.deal()
 
-        mocked_log.warning.assert_called_once_with(
+        self.mocked_log.warning.assert_called_once_with(
             "\n".join(["Test '%s' failed", "stdout = %s", "stderr = %s", ]),
-            DEFAULT_TEST_COMMAND,
+            " ".join(TEST_COMMAND),
             "STDOUT",
             "STDERR")
 
-        mocked_log.reset_mock()
+        self.mocked_log.reset_mock()
 
         # If scenario was implemented, deal from the second scenario from the same feature.
         mocked_popen.return_value.returncode = 0
         mocked_popen.return_value.communicate.return_value = ("", "")
-        dealer.deal()
+        self.dealer.deal()
 
-        mocked_log.assert_has_calls([
+        self.mocked_log.assert_has_calls([
             call.info("All tests are passing"),
             call.info("Dealing scenario in '%s'", FEATURE_PATH_2),
             call.info("Writing scenario from '%s': '%s'", FEATURE_PATH_2, SCENARIO_2_2_1.lstrip()),
             ])
 
-        mocked_log.reset_mock()
+        self.mocked_log.reset_mock()
+
+    def _create_dealer(self, banks = None):
+        """Create a new dealer and logger mock."""
+        if banks is None:
+            banks = [BANK_PATH_1, BANK_PATH_2, ]
+
+        with patch("bddbot.dealer.logging.getLogger") as mock_logger:
+            self.dealer = Dealer(banks, DEFAULT_TEST_COMMANDS)
+
+        mock_logger.assert_called_once_with(ANY)
+        self.mocked_log = mock_logger.return_value
 
     def _write_banks(self):
         # pylint: disable=missing-docstring

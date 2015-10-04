@@ -11,7 +11,7 @@ from bddbot.errors import BotError
 def n_scenarios_were_dealt(context, count):
     if not context.dealer:
         config = BotConfiguration()
-        context.dealer = Dealer(config.banks, config.test_commands)
+        context.dealer = Dealer(config.banks, config.tests)
 
     for _ in xrange(count):
         context.dealer.deal()
@@ -22,7 +22,7 @@ def load_dealer(context):
     assert_is_none(context.dealer)
 
     config = BotConfiguration()
-    context.dealer = Dealer(config.banks, config.test_commands)
+    context.dealer = Dealer(config.banks, config.tests)
 
     try:
         context.dealer.load()
@@ -34,7 +34,7 @@ def restart_the_bot(context):
     assert_is_not_none(context.dealer)
 
     config = BotConfiguration()
-    context.dealer = Dealer(config.banks, config.test_commands)
+    context.dealer = Dealer(config.banks, config.tests)
 
 @when("the bot's state is saved")
 def save_state(context):
@@ -47,7 +47,7 @@ def first_scenario_is_dealt(context):
 
     if not context.dealer:
         config = BotConfiguration()
-        context.dealer = Dealer(config.banks, config.test_commands)
+        context.dealer = Dealer(config.banks, config.tests)
 
     try:
         context.dealer.deal()

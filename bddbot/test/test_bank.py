@@ -6,36 +6,31 @@ from mock_open import MockOpen
 from bddbot.bank import Bank
 from bddbot.parser import parse_bank
 from bddbot.errors import BotError, ParsingError
-
-BANK_PATH = "/path/to/some.bank"
-FEATURE_PATH = BANK_PATH.replace("bank", "feature")
+from bddbot.test.constants import BANK_PATH_1, FEATURE_PATH_1
 
 @patch("bddbot.bank.open", new_callable = MockOpen)
 def test_error_openning_file(mocked_open):
-    """Exceptions openning a bank file are translated to BotErrors."""
-    mocked_open[BANK_PATH].side_effect = IOError()
+    mocked_open[BANK_PATH_1].side_effect = IOError()
 
     with assert_raises(BotError) as error_context:
-        Bank(BANK_PATH)
+        Bank(BANK_PATH_1)
 
-    mocked_open.assert_called_once_with(BANK_PATH, "r")
-    mocked_open[BANK_PATH].read.assert_not_called()
+    mocked_open.assert_called_once_with(BANK_PATH_1, "r")
+    mocked_open[BANK_PATH_1].read.assert_not_called()
     assert_in("couldn't open features bank", error_context.exception.message.lower())
 
 @patch("bddbot.bank.open", new_callable = MockOpen)
 def test_error_reading_file(mocked_open):
-    """Exceptions reading from a bank file are translated to BotErrors."""
-    mocked_open[BANK_PATH].read.side_effect = IOError()
+    mocked_open[BANK_PATH_1].read.side_effect = IOError()
 
     with assert_raises(BotError) as error_context:
-        Bank(BANK_PATH)
+        Bank(BANK_PATH_1)
 
-    mocked_open.assert_called_once_with(BANK_PATH, "r")
-    mocked_open[BANK_PATH].read.assert_called_once_with()
+    mocked_open.assert_called_once_with(BANK_PATH_1, "r")
+    mocked_open[BANK_PATH_1].read.assert_called_once_with()
     assert_in("couldn't open features bank", error_context.exception.message.lower())
 
 def test_without_header():
-    """Test splitting feature files without headers."""
     for (contents, is_fresh, is_done, feature, scenarios) in TEST_CASES:
         yield (_check_split_bank,
                ("", feature, scenarios),
@@ -43,7 +38,6 @@ def test_without_header():
                is_fresh, is_done)
 
 def test_with_header():
-    """Test splitting feature files with headers."""
     header_text = "Some header text."
     for (contents, is_fresh, is_done, feature, scenarios) in TEST_CASES:
         yield (_check_split_bank,
@@ -52,7 +46,7 @@ def test_with_header():
                is_fresh, is_done)
 
 def test_multiline_text_error():
-    """If a multiline text is started but not finished, raise a parser error."""
+    # If a multiline text is started but not finished, raise a parser error.
     contents = "\n".join([
         "Feature: A multiline text error",
         "    Scenario: A bad scenario",
@@ -68,7 +62,7 @@ def test_multiline_text_error():
     assert_equal(4, error_context.exception.line)
 
 def test_dangling_feature_tags():
-    """Raise exception if there are any tags without a feature definition."""
+    # Raise exception if there are any tags without a feature definition.
     contents = "\n".join([
         "@dangling",
     ])
@@ -80,7 +74,7 @@ def test_dangling_feature_tags():
     assert_equal(1, error_context.exception.line)
 
 def test_dangling_scenario_tags():
-    """Raise exception if there are any dangling tags."""
+    # Raise exception if there are any dangling tags.
     contents = "\n".join([
         "Feature: Tags and the end of the file",
         "    Scenario: A bad scenario",
@@ -100,17 +94,17 @@ def _check_split_bank(expected, contents, is_fresh, is_done):
     (expected_header, expected_feature, expected_scenarios) = expected
 
     mocked_open = MockOpen()
-    mocked_open[BANK_PATH].read_data = contents
+    mocked_open[BANK_PATH_1].read_data = contents
     with patch("bddbot.bank.open", mocked_open):
-        bank = Bank(BANK_PATH)
+        bank = Bank(BANK_PATH_1)
 
     assert_equal(is_fresh, bank.is_fresh())
     assert_equal(is_done, bank.is_done())
-    mocked_open.assert_called_once_with(BANK_PATH, "r")
-    mocked_open[BANK_PATH].read.assert_called_once_with()
+    mocked_open.assert_called_once_with(BANK_PATH_1, "r")
+    mocked_open[BANK_PATH_1].read.assert_called_once_with()
 
     # Verify output path.
-    assert_equal(FEATURE_PATH, bank.output_path)
+    assert_equal(FEATURE_PATH_1, bank.output_path)
 
     # Verify header.
     assert_multi_line_equal(expected_header, bank.header)

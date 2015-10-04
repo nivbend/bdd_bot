@@ -3,7 +3,7 @@
 from behave import given, then
 from os.path import isdir, isfile
 from nose.tools import assert_true, assert_false, assert_multi_line_equal
-from bddbot.config import DEFAULT_CONFIG_FILENAME
+from bddbot.config import CONFIG_FILENAME
 
 @given("the file \"{filename:Path}\" doesn't exist")
 def file_does_not_exist(context, filename):
@@ -21,7 +21,7 @@ def the_features_bank_contains(context, filename):
 
 @given("the configuration file")
 def the_configuration_file_contains(context):
-    the_file_contains(context, DEFAULT_CONFIG_FILENAME)
+    the_file_contains(context, CONFIG_FILENAME)
 
 @given("a directory \"{directory:Path}\"")
 def directory_exist(context, directory):
