@@ -4,7 +4,7 @@ from nose.tools import assert_equal, assert_multi_line_equal, assert_raises, ass
 from mock import patch
 from mock_open import MockOpen
 from bddbot.bank import Bank
-from bddbot.parser import BankParser
+from bddbot.parser import parse_bank
 from bddbot.errors import BotError, ParsingError
 
 BANK_PATH = "/path/to/some.bank"
@@ -61,9 +61,8 @@ def test_multiline_text_error():
         "            This multiline text has no end!",
     ])
 
-    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse()
+        parse_bank(contents)
 
     assert_in("multiline", error_context.exception.message.lower())
     assert_equal(4, error_context.exception.line)
@@ -74,9 +73,8 @@ def test_dangling_feature_tags():
         "@dangling",
     ])
 
-    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse()
+        parse_bank(contents)
 
     assert_in("dangling tags", error_context.exception.message.lower())
     assert_equal(1, error_context.exception.line)
@@ -91,19 +89,18 @@ def test_dangling_scenario_tags():
         "        @this_is_bad",
     ])
 
-    parser = BankParser(contents)
     with assert_raises(ParsingError) as error_context:
-        parser.parse()
+        parse_bank(contents)
 
     assert_in("dangling tags", error_context.exception.message.lower())
     assert_equal(5, error_context.exception.line)
 
-def _check_split_bank(expected, text, is_fresh, is_done):
+def _check_split_bank(expected, contents, is_fresh, is_done):
     """Compare two bank splits by their structure."""
     (expected_header, expected_feature, expected_scenarios) = expected
 
     mocked_open = MockOpen()
-    mocked_open[BANK_PATH].read_data = text
+    mocked_open[BANK_PATH].read_data = contents
     with patch("bddbot.bank.open", mocked_open):
         bank = Bank(BANK_PATH)
 
