@@ -173,6 +173,7 @@ class BaseDealerTest(object):
         """Reset all mocks."""
         self.mocked_open.reset_mock()
         self.mocked_popen.reset_mock()
+        self.mocked_bank_class.reset_mock()
 
         for mock_bank in self.mocked_bank.itervalues():
             mock_bank.reset_mock()
@@ -257,7 +258,12 @@ class TestLoading(BaseDealerTest):
     def test_call_load_twice(self):
         """Calling load() twice only reads the features bank once."""
         self._load_dealer(banks = [BANK_PATH_1, ])
+
         self.dealer.load()
+
+        self.mocked_open.assert_not_called()
+        self.mocked_bank_class.assert_not_called()
+        self.mocked_popen.assert_not_called()
 
 class TestDealFirst(BaseDealerTest):
     """Test dealing the first scenario."""
