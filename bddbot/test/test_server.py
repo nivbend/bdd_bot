@@ -1,10 +1,10 @@
 """Test serving scenarios from a remote bot server."""
 
 from threading import Thread
-from collections import defaultdict
 from nose.tools import assert_equal, assert_items_equal
 from mock import Mock, call, patch, ANY
 from bddbot.server import BankServer
+from bddbot.test.utils import BankMockerTest
 from bddbot.test.constants import BANK_PATH_1, BANK_PATH_2, FEATURE_PATH_1, FEATURE_PATH_2
 from bddbot.test.constants import HOST, PORT, CLIENT
 
@@ -29,20 +29,18 @@ QUERIES = {
     "    Scenario: Scenario #2-1",
 )
 
-class BaseServerTest(object):
+class BaseServerTest(BankMockerTest):
     # pylint: disable=too-few-public-methods
     """A base test case class to mock out BankServer handling."""
     def __init__(self):
+        super(BaseServerTest, self).__init__()
         self.server = None
         self.mock_socket = Mock()
-        self.mock_banks = defaultdict(Mock)
-        self.mock_bank_class = Mock(side_effect = self.__create_bank)
 
         self.mock_socket.fileno.return_value = 0
 
     def teardown(self):
-        self.mock_bank_class.reset_mock()
-        self.mock_banks.clear()
+        super(BaseServerTest, self).__init__()
         self.server = None
 
     def _create_server(self, banks):
@@ -54,22 +52,6 @@ class BaseServerTest(object):
             self.server = BankServer(PORT, banks)
 
         self.mock_bank_class.assert_has_calls([call(path) for path in banks])
-
-    def _setup_bank(self, bank, is_fresh, is_done, scenario):
-        """Setup a mock bank."""
-        # pylint: disable=no-member
-        (output_path, header, feature) = self.FEATURES[bank]
-
-        self.mock_banks[bank].is_fresh.return_value = is_fresh
-        self.mock_banks[bank].is_done.return_value = is_done
-        self.mock_banks[bank].output_path = output_path
-        self.mock_banks[bank].header = header
-        self.mock_banks[bank].feature = feature
-        self.mock_banks[bank].get_next_scenario.return_value = scenario
-
-    def __create_bank(self, path):
-        """Return a mock Bank instance, or creates a new one and adds it to the map."""
-        return self.mock_banks.setdefault(path, Mock())
 
 class TestBankServer(BaseServerTest):
     FEATURES = {
