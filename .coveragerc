@@ -1,0 +1,4 @@
+[report]
+partial_branches:
+    @abstractmethod
+    @abstractproperty

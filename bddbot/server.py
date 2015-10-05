@@ -69,9 +69,7 @@ class BankServer(SimpleXMLRPCServer, object):
             self.__assigned[client] = bank
 
         scenario = bank.get_next_scenario()
-
-        if scenario is not None:
-            self.__log.info("Sent '%s' to '%s'", scenario.lstrip(), client)
+        self.__log.info("Sent '%s' to '%s'", scenario.lstrip(), client)
 
         return scenario
 

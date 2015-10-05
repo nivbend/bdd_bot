@@ -57,6 +57,35 @@ class TestBankParsing(object):
         assert_in("dangling tags", error_context.exception.message.lower())
         assert_equal(5, error_context.exception.line)
 
+    @staticmethod
+    def test_feature_tags_not_followed_by_feature():
+        contents = "\n".join([
+            "@these_are_feature_tags",
+            "@they_should_be_followed_only_by_a_feature",
+            "Scenario: This is an error of some kind",
+        ])
+
+        with assert_raises(ParsingError) as error_context:
+            parse_bank(contents)
+
+        assert_in("invalid line", error_context.exception.message.lower())
+        assert_equal(3, error_context.exception.line)
+
+    @staticmethod
+    def test_scenario_tags_not_followed_by_scenario():
+        contents = "\n".join([
+            "Feature: A faulty feature",
+            "    @these_are_scenario_tags",
+            "    @they_should_be_followed_only_by_a_scenario",
+            "    Feature: This is an error of some kind",
+        ])
+
+        with assert_raises(ParsingError) as error_context:
+            parse_bank(contents)
+
+        assert_in("invalid line", error_context.exception.message.lower())
+        assert_equal(4, error_context.exception.line)
+
 class TestLocalBank(object):
     """Test local bank operations."""
     @staticmethod
@@ -82,6 +111,16 @@ class TestLocalBank(object):
         mocked_open.assert_called_once_with(BANK_PATH_1, "r")
         mocked_open[BANK_PATH_1].read.assert_called_once_with()
         assert_in("couldn't open features bank", error_context.exception.message.lower())
+
+    def test_output_path(self):
+        test_cases = [
+            ("banks/simple.bank", "features/simple.feature"),
+            ("/path/to/some.bank", "/path/to/some.feature"),
+            ("banks/no-extension", "features/no-extension.feature"),
+        ]
+
+        for (bank_path, expected_output_path) in test_cases:
+            yield (self._check_output_path, bank_path, expected_output_path)
 
     def test_without_header(self):
         for (contents, is_fresh, is_done, feature, scenarios) in TEST_CASES:
@@ -120,6 +159,15 @@ class TestLocalBank(object):
         all_scenarios = list(iter(bank.get_next_scenario, None))
         for (expected_scenario, actual_scenario) in zip(expected_scenarios, all_scenarios):
             assert_multi_line_equal(expected_scenario, actual_scenario)
+
+    @staticmethod
+    def _check_output_path(bank_path, expected_output_path):
+        mocked_open = MockOpen()
+        mocked_open[bank_path].read_data = ""
+        with patch("bddbot.bank.open", mocked_open):
+            bank = Bank(bank_path)
+
+        assert_equal(expected_output_path, bank.output_path)
 
 class TestRemoteBank(object):
     """Test connection to a remote bank."""

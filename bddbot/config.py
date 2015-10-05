@@ -18,11 +18,7 @@ class BotConfiguration(object):
         if not filename:
             filename = CONFIG_FILENAME
 
-        try:
-            with open(filename, "r") as handle:
-                config.readfp(handle, filename)
-        except IOError:
-            pass
+        config.read([filename, ])
 
         self.__banks = _get_banks(config)
         self.__tests = _get_tests(config)

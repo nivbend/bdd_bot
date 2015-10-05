@@ -29,8 +29,8 @@ class Dealer(object):
         self.__log = logging.getLogger(__name__)
 
         try:
+            self.__log.debug("Loading state")
             with open(STATE_PATH, "rb") as state:
-                self.__log.debug("Loading state")
                 self.__banks.extend(pickle.load(state))
         except IOError:
             pass
@@ -157,20 +157,8 @@ class Dealer(object):
             pass
 
         try:
-            with open(bank.output_path, "w") as features:
-                self.__log.info(
-                    "Writing header from '%s': '%s'",
-                    bank.output_path,
-                    bank.header.rstrip("\n"))
-                features.write(bank.header)
-
-                self.__log.info(
-                    "Writing feature from '%s': '%s'",
-                    bank.output_path,
-                    bank.feature.rstrip("\n"))
-                features.write(bank.feature)
-
-                self.__write_next_scenario(features, bank.output_path, bank)
+            with open(bank.output_path, "w") as stream:
+                self.__write_first_scenario(stream, bank.output_path, bank)
         except IOError:
             raise BotError("Couldn't write to '{:s}'".format(bank.output_path))
 
@@ -179,21 +167,27 @@ class Dealer(object):
         self.__log.info("Dealing scenario in '%s'", bank.output_path)
 
         try:
-            with open(bank.output_path, "ab") as features:
-                self.__write_next_scenario(features, bank.output_path, bank)
+            with open(bank.output_path, "ab") as stream:
+                self.__write_next_scenario(stream, bank.output_path, bank)
         except IOError:
             raise BotError("Couldn't write to '{:s}'".format(bank.output_path))
 
-    def __write_next_scenario(self, stream, path, bank):
+    def __write_first_scenario(self, stream, output_path, bank):
+        """Write the header, feature and first scenario from the bank to the stream."""
+        self.__log.info("Writing header from '%s': '%s'", output_path, bank.header.rstrip("\n"))
+        stream.write(bank.header)
+
+        self.__log.info("Writing feature from '%s': '%s'", output_path, bank.feature.rstrip("\n"))
+        stream.write(bank.feature)
+
+        self.__write_next_scenario(stream, output_path, bank)
+
+    def __write_next_scenario(self, stream, output_path, bank):
         """Write the next scenario from the bank to the stream."""
         scenario = bank.get_next_scenario()
 
-        # No scenarios in bank.
-        if not scenario:
-            return
-
         self.__log.info(
             "Writing scenario from '%s': '%s'",
-            path, scenario.splitlines()[0].lstrip())
+            output_path, scenario.splitlines()[0].lstrip())
 
         stream.write(scenario)

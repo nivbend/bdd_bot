@@ -1,8 +1,7 @@
 """Test configuration properties."""
 
 from nose.tools import assert_equal, assert_in, assert_is_none, assert_raises
-from mock import patch
-from mock_open import MockOpen
+from mock import Mock, patch
 from bddbot.config import BotConfiguration, ConfigError
 from bddbot.config import CONFIG_FILENAME
 from bddbot.test.constants import BANK_PATH_1, DEFAULT_TEST_COMMANDS, PORT
@@ -12,38 +11,73 @@ class BaseConfigTest(object):
     # pylint: disable=too-few-public-methods
     def __init__(self):
         self.config = None
+        self.mocked_config_parser_class = Mock()
+        self.mocked_config_parser = self.mocked_config_parser_class.return_value
 
-    def _create_config(self, contents, filename = CONFIG_FILENAME, side_effect = None):
+    def teardown(self):
+        self.config = None
+        self.mocked_config_parser_class.reset_mock()
+        self.mocked_config_parser.reset_mock()
+
+    def _create_config(self, contents, filename = CONFIG_FILENAME):
         """Configure from a mocked file."""
-        mocked_open = MockOpen()
-        mocked_open[filename].read_data = contents
-        mocked_open[filename].side_effect = side_effect
+        def _has_option(section, value):
+            if section not in contents:
+                return False
+            return value in contents[section]
 
-        with patch("bddbot.config.open", mocked_open):
+        def _get(section, value):
+            return contents[section][value]
+
+        def _getint(section, value):
+            return int(_get(section, value))
+
+        self.mocked_config_parser.read.return_value = [filename, ]
+        self.mocked_config_parser.has_option.side_effect = _has_option
+        self.mocked_config_parser.get.side_effect = _get
+        self.mocked_config_parser.getint.side_effect = _getint
+
+        with patch("bddbot.config.ConfigParser", self.mocked_config_parser_class):
             self.config = BotConfiguration(filename)
 
-        mocked_open.assert_called_once_with(filename, "r")
+        self.mocked_config_parser_class.assert_called_once_with()
+        self.mocked_config_parser.read.assert_called_once_with([filename, ])
 
 class TestConfigPath(BaseConfigTest):
-    def test_no_config_file(self):
-        self._create_config("", side_effect = IOError())
+    def test_default_path(self):
+        self.mocked_config_parser.has_option.side_effect = lambda section, value: False
+        with patch("bddbot.config.ConfigParser", self.mocked_config_parser_class):
+            BotConfiguration()
+
+        self.mocked_config_parser_class.assert_called_once_with()
+        self.mocked_config_parser.read.assert_called_once_with([CONFIG_FILENAME, ])
+
+    def test_no_file(self):
+        self.mocked_config_parser.read.return_value = []
+        self.mocked_config_parser.has_option.side_effect = lambda section, value: False
+        with patch("bddbot.config.ConfigParser", self.mocked_config_parser_class):
+            self.config = BotConfiguration()
+
+        self.mocked_config_parser_class.assert_called_once_with()
+        self.mocked_config_parser.read.assert_called_once_with([CONFIG_FILENAME, ])
         assert_equal(DEFAULT_TEST_COMMANDS, self.config.tests)
         assert_equal([], self.config.banks)
 
-    def test_empty_config_file(self):
-        self._create_config("")
+    def test_empty(self):
+        self._create_config({})
         assert_equal(DEFAULT_TEST_COMMANDS, self.config.tests)
         assert_equal([], self.config.banks)
 
-    def test_custom_config_path(self):
+    def test_custom_path(self):
         tests = ["behave", "--format=null", ]
-        contents = "\n".join([
-            "[paths]",
-            "bank: %s" % (BANK_PATH_1, ),
-            "",
-            "[test]",
-            "run: %s" % (" ".join(tests), ),
-        ])
+        contents = {
+            "paths": {
+                "bank": BANK_PATH_1,
+            },
+            "test": {
+                "run": " ".join(tests),
+            },
+        }
 
         self._create_config(contents, filename = "/path/to/bddbot.cfg")
 
@@ -60,10 +94,7 @@ class TestBankPath(BaseConfigTest):
     def test_empty_value(self):
         # Verify setting an empty bank path value is an error.
         with assert_raises(ConfigError) as error_context:
-            self._create_config("\n".join([
-                "[paths]",
-                "bank:",
-            ]))
+            self._create_config({"paths": {"bank": "", }, })
 
         assert_in("no features banks", error_context.exception.message.lower())
 
@@ -72,15 +103,15 @@ class TestBankPath(BaseConfigTest):
             yield (self._check_bank_path, bank_paths, expected_paths)
 
     def _check_bank_path(self, bank_paths, expected_paths):
-        self._create_config("\n".join([
-            "[paths]",
-            "bank: {:s}".format("\n    ".join(bank_paths)),
-        ]))
+        self._create_config({
+            "paths": {
+                "bank": "\n".join(bank_paths),
+            },
+        })
 
         assert_equal(expected_paths, self.config.banks)
 
-class TestBDDTestCommands(BaseConfigTest):
-    # pylint: disable=too-few-public-methods
+class TestTestCommands(BaseConfigTest):
     CASES = [
         (["", ],                            []),
         (["", "", ],                        []),
@@ -94,27 +125,26 @@ class TestBDDTestCommands(BaseConfigTest):
             yield (self._check_test_command, actual_commands, expected_commands)
 
     def _check_test_command(self, actual_commands, expected_commands):
-        self._create_config("\n".join([
-            "[test]",
-            "run: {:s}".format("\n    ".join(actual_commands)),
-        ]))
+        self._create_config({
+            "test": {
+                "run": "\n".join(actual_commands),
+            },
+        })
 
         assert_equal(expected_commands, self.config.tests)
         assert_equal([], self.config.banks)
 
 class TestServer(BaseConfigTest):
-    # pylint: disable=too-few-public-methods
     def test_empty_value(self):
-        self._create_config("\n".join([
-            "[server]",
-        ]))
+        self._create_config({"server": {}, })
 
         assert_is_none(self.config.port)
 
     def test_set_port(self):
-        self._create_config("\n".join([
-            "[server]",
-            "port: {:d}".format(PORT),
-        ]))
+        self._create_config({
+            "server": {
+                "port": PORT,
+            },
+        })
 
         assert_equal(PORT, self.config.port)

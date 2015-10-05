@@ -78,8 +78,8 @@ class BaseDealerTest(BankMockerTest):
         if not tests:
             tests = DEFAULT_TEST_COMMANDS
 
-        # Setup and call load().
-        self._create_dealer(banks, tests, name = name)
+        if self.dealer is None:
+            self._create_dealer(banks, tests, name = name)
 
         # pylint: disable=bad-continuation
         with patch.multiple("bddbot.dealer",
@@ -124,14 +124,9 @@ class BaseDealerTest(BankMockerTest):
         if expected_feature is not None:
             self.mocked_open.assert_called_once_with(feature_path, "w")
 
-            if expected_scenario is not None:
-                self._assert_writes(
-                    ["", expected_feature + "\n", expected_scenario, ],
-                    path = feature_path)
-            else:
-                self._assert_writes(
-                    ["", expected_feature, ],
-                    path = feature_path)
+            self._assert_writes(
+                ["", expected_feature + "\n", expected_scenario, ],
+                path = feature_path)
 
             self.mocked_mkdir.assert_called_once_with(dirname(feature_path))
 
@@ -242,6 +237,27 @@ class TestLoading(BaseDealerTest):
     def test_successful_call(self):
         self._load_dealer(banks = [BANK_PATH_1, ])
 
+    def test_done_attribute(self):
+        # Unloaded dealers are considered done.
+        self._create_dealer([BANK_PATH_1, BANK_PATH_2, ], None)
+        assert_false(self.dealer.is_done)
+
+        self._load_dealer(banks = [BANK_PATH_1, BANK_PATH_2, ])
+
+        self._setup_bank(BANK_PATH_1, True, False, SCENARIO_1_1)
+        self._setup_bank(BANK_PATH_2, True, False, SCENARIO_2_1)
+        assert_false(self.dealer.is_done)
+
+        # If at least one bank isn't finished, dealer is not done.
+        self._setup_bank(BANK_PATH_1, False, True, None)
+        self._setup_bank(BANK_PATH_2, True, False, SCENARIO_2_1)
+        assert_false(self.dealer.is_done)
+
+        # When all banks are done, dealer is done.
+        self._setup_bank(BANK_PATH_1, False, True, None)
+        self._setup_bank(BANK_PATH_2, False, True, None)
+        assert_true(self.dealer.is_done)
+
     def test_call_load_twice(self):
         # Calling load() twice only reads the features bank once.
         self._load_dealer(banks = [BANK_PATH_1, ])
@@ -304,6 +320,22 @@ class TestDealFirst(BaseDealerTest):
         self._setup_bank(BANK_PATH_1, True, False, SCENARIO_1_1)
         self._deal(FEATURE_1, SCENARIO_1_1)
 
+    def test_deal_causes_loading(self):
+        self._create_dealer([BANK_PATH_1, ], None)
+
+        self.mocked_popen.return_value.returncode = 0
+        self.mocked_popen.return_value.communicate.return_value = ("", "")
+        self._setup_bank(BANK_PATH_1, True, False, SCENARIO_1_1)
+
+        with patch("bddbot.dealer.Bank", self.mock_bank_class):
+            self.dealer.deal()
+
+        self.mock_bank_class.assert_called_once_with(BANK_PATH_1)
+        self.mocked_open.assert_called_once_with(FEATURE_PATH_1, "w")
+        self.mocked_popen.assert_not_called()
+        self._assert_writes(["", FEATURE_1 + "\n", SCENARIO_1_1, ])
+        self.mocked_mkdir.assert_called_once_with(FEATURES_DIRECTORY)
+
     def test_features_directory_exists(self):
         # Test deal() works even if the features directory already exist.
         self._load_dealer()
@@ -356,6 +388,17 @@ class TestDealNext(BaseDealerTest):
         self._setup_bank(BANK_PATH_1, False, False, SCENARIO_1_2)
         popen_calls = self._deal(None, SCENARIO_1_2)
         assert_equal(DEFAULT_TEST_COMMANDS, popen_calls)
+
+    def test_failed_write(self):
+        self._setup_bank(BANK_PATH_1, False, False, SCENARIO_1_2)
+        self.mocked_open[FEATURE_PATH_1].write.side_effect = IOError()
+
+        with assert_raises(BotError) as error_context:
+            self.dealer.deal()
+
+        assert_in("couldn't write", error_context.exception.message.lower())
+        self.mocked_open.assert_called_once_with(FEATURE_PATH_1, "ab")
+        self.mocked_open[FEATURE_PATH_1].write.assert_called_once_with(SCENARIO_1_2)
 
 class TestDealFromMultipleBanks(BaseDealerTest):
     SCENARIO_COUNTS = [3, 2, 1, 1, 5, ]
@@ -452,6 +495,22 @@ class TestPersistency(BaseDealerTest):
         for banks in ([], [BANK_PATH_1, ], [BANK_PATH_1, BANK_PATH_2, ]):
             yield (self._check_save, False, banks, [])
             yield (self._check_save, True, banks, banks)
+
+    def test_error_unpickling(self):
+        self._setup_bank(BANK_PATH_1, False, False, SCENARIO_1_2)
+
+        mocked_load = Mock(side_effect = IOError())
+        with patch("bddbot.dealer.pickle.load", mocked_load):
+            self.dealer = Dealer([BANK_PATH_1, ], DEFAULT_TEST_COMMANDS)
+
+        self.mocked_open.assert_called_once_with(STATE_PATH, "rb")
+        self._reset_mocks()
+
+        # Make sure dealer was not loaded by calling load again.
+        with patch("bddbot.dealer.Bank", self.mock_bank_class):
+            self.dealer.load()
+
+        self.mock_bank_class.assert_called_once_with(BANK_PATH_1)
 
     def test_resume(self):
         self._setup_bank(BANK_PATH_1, False, False, SCENARIO_1_2)
