@@ -64,3 +64,4 @@ def after_scenario(context, scenario):
         if context.server_thread:
             context.server.shutdown()
             context.server_thread.join(1)
+            context.server.server_close()
