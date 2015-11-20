@@ -3,8 +3,8 @@
 from ConfigParser import SafeConfigParser as ConfigParser
 from .errors import BotError
 
-DEFAULT_CONFIG_FILENAME = "bddbot.cfg"
-DEFAULT_TEST_COMMAND = "behave"
+CONFIG_FILENAME = "bddbot.cfg"
+TEST_COMMAND = ["behave", ]
 
 class ConfigError(BotError):
     # pylint: disable=missing-docstring
@@ -16,16 +16,14 @@ class BotConfiguration(object):
         config = ConfigParser()
 
         if not filename:
-            filename = DEFAULT_CONFIG_FILENAME
+            filename = CONFIG_FILENAME
 
-        try:
-            with open(filename, "r") as handle:
-                config.readfp(handle, filename)
-        except IOError:
-            pass
+        config.read([filename, ])
 
         self.__banks = _get_banks(config)
-        self.__test_commands = _get_test_commands(config)
+        self.__tests = _get_tests(config)
+        self.__host = _get_host(config)
+        self.__port = _get_port(config)
 
     @property
     def banks(self):
@@ -33,13 +31,23 @@ class BotConfiguration(object):
         return self.__banks
 
     @property
-    def test_commands(self):
+    def tests(self):
         """The commands to run BDD tests with.
 
         Test commands are generated as a list of command and arguments, the kind the subprocess
         module can later take (for example, `["behave", "--no-multiline", "--format=progress", ]`).
         """
-        return self.__test_commands
+        return self.__tests
+
+    @property
+    def host(self):
+        """Server's hostname (None if undefined)."""
+        return self.__host
+
+    @property
+    def port(self):
+        """Server's port (None if undefined)."""
+        return self.__port
 
 def _get_banks(config):
     """get the feature banks' paths from configuration."""
@@ -53,11 +61,27 @@ def _get_banks(config):
     # Return non-empty paths.
     return [path for path in paths if path]
 
-def _get_test_commands(config):
+def _get_tests(config):
     """get the test commands from configuration."""
     if not config.has_option("test", "run"):
-        return [DEFAULT_TEST_COMMAND.split(), ]
+        return [TEST_COMMAND, ]
 
     # Return non-empty commands.
     commands = config.get("test", "run").splitlines()
     return [command.split() for command in commands if command]
+
+def _get_host(config):
+    """Get the server's hostname from configuration."""
+    if not config.has_option("server", "host"):
+        return None
+
+    host = config.get("server", "host")
+    return host
+
+def _get_port(config):
+    """Get the server's port from configuration."""
+    if not config.has_option("server", "port"):
+        return None
+
+    port = config.getint("server", "port")
+    return port

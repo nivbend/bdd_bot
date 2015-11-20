@@ -1,110 +1,117 @@
 """Test configuration properties."""
 
-from nose.tools import assert_equal, assert_in, assert_raises
-from mock import patch
-from mock_open import MockOpen
+from nose.tools import assert_equal, assert_in, assert_is_none, assert_raises
+from mock import Mock, patch
 from bddbot.config import BotConfiguration, ConfigError
-from bddbot.config import DEFAULT_CONFIG_FILENAME, DEFAULT_TEST_COMMAND
+from bddbot.config import CONFIG_FILENAME
+from bddbot.test.constants import BANK_PATH_1, DEFAULT_TEST_COMMANDS, HOST, PORT
 
-@patch("bddbot.config.open", new_callable = MockOpen)
-def test_no_config_file(mock_open):
-    """Load defaults if no configuration file exist."""
-    mock_open[DEFAULT_CONFIG_FILENAME].side_effect = IOError()
-
-    config = BotConfiguration()
-
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
-    assert_equal([DEFAULT_TEST_COMMAND.split(), ], config.test_commands)
-    assert_equal([], config.banks)
-
-@patch("bddbot.config.open", new_callable = MockOpen)
-def test_empty_config_file(mock_open):
-    """Load defaults if configuration is empty."""
-    mock_open[DEFAULT_CONFIG_FILENAME].read_data = ""
-
-    config = BotConfiguration()
-
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
-    assert_equal([DEFAULT_TEST_COMMAND.split(), ], config.test_commands)
-    assert_equal([], config.banks)
-
-@patch("bddbot.config.open", new_callable = MockOpen)
-def test_multiple_options(mock_open):
-    """Supplying multiple options should set all appropriate attributes."""
-    bank_path = "/path/to/features.bank"
-    test_command = ["behave", "--format=null", ]
-    mock_open[DEFAULT_CONFIG_FILENAME].read_data = "\n".join([
-        "[paths]",
-        "bank: {:s}".format(bank_path),
-        "",
-        "[test]",
-        "run: {:s}".format(" ".join(test_command)),
-    ])
-
-    config = BotConfiguration()
-
-    mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
-    assert_equal([test_command, ], config.test_commands)
-    assert_equal([bank_path, ], config.banks)
-
-@patch("bddbot.config.open", new_callable = MockOpen)
-def test_custom_config_path(mock_open):
-    """Test reading from a custom path."""
-    config_path = "/path/to/bddbotrc.cfg"
-    mock_open[config_path].read_data = ""
-
-    config = BotConfiguration(config_path)
-
-    mock_open.assert_called_once_with(config_path, "r")
-    assert_equal([DEFAULT_TEST_COMMAND.split(), ], config.test_commands)
-    assert_equal([], config.banks)
-
-class TestBankPath(object):
+class BaseConfigTest(object):
+    # pylint: disable=missing-docstring
     # pylint: disable=too-few-public-methods
-    """Test setting the bank path/s."""
+    def __init__(self):
+        self.config = None
+        self.mocked_config_parser_class = Mock()
+        self.mocked_config_parser = self.mocked_config_parser_class.return_value
+
+    def teardown(self):
+        self.config = None
+        self.mocked_config_parser_class.reset_mock()
+        self.mocked_config_parser.reset_mock()
+
+    def _create_config(self, contents, filename = CONFIG_FILENAME):
+        """Configure from a mocked file."""
+        def _has_option(section, value):
+            if section not in contents:
+                return False
+            return value in contents[section]
+
+        def _get(section, value):
+            return contents[section][value]
+
+        def _getint(section, value):
+            return int(_get(section, value))
+
+        self.mocked_config_parser.read.return_value = [filename, ]
+        self.mocked_config_parser.has_option.side_effect = _has_option
+        self.mocked_config_parser.get.side_effect = _get
+        self.mocked_config_parser.getint.side_effect = _getint
+
+        with patch("bddbot.config.ConfigParser", self.mocked_config_parser_class):
+            self.config = BotConfiguration(filename)
+
+        self.mocked_config_parser_class.assert_called_once_with()
+        self.mocked_config_parser.read.assert_called_once_with([filename, ])
+
+class TestConfigPath(BaseConfigTest):
+    def test_default_path(self):
+        self.mocked_config_parser.has_option.side_effect = lambda section, value: False
+        with patch("bddbot.config.ConfigParser", self.mocked_config_parser_class):
+            BotConfiguration()
+
+        self.mocked_config_parser_class.assert_called_once_with()
+        self.mocked_config_parser.read.assert_called_once_with([CONFIG_FILENAME, ])
+
+    def test_no_file(self):
+        self.mocked_config_parser.read.return_value = []
+        self.mocked_config_parser.has_option.side_effect = lambda section, value: False
+        with patch("bddbot.config.ConfigParser", self.mocked_config_parser_class):
+            self.config = BotConfiguration()
+
+        self.mocked_config_parser_class.assert_called_once_with()
+        self.mocked_config_parser.read.assert_called_once_with([CONFIG_FILENAME, ])
+        assert_equal(DEFAULT_TEST_COMMANDS, self.config.tests)
+        assert_equal([], self.config.banks)
+
+    def test_empty(self):
+        self._create_config({})
+        assert_equal(DEFAULT_TEST_COMMANDS, self.config.tests)
+        assert_equal([], self.config.banks)
+
+    def test_custom_path(self):
+        tests = ["behave", "--format=null", ]
+        contents = {
+            "paths": {
+                "bank": BANK_PATH_1,
+            },
+            "test": {
+                "run": " ".join(tests),
+            },
+        }
+
+        self._create_config(contents, filename = "/path/to/bddbot.cfg")
+
+        assert_equal([BANK_PATH_1, ], self.config.banks)
+        assert_equal([tests, ], self.config.tests)
+
+class TestBankPath(BaseConfigTest):
+    # pylint: disable=too-few-public-methods
     CASES = [
         (["banks/single-file.bank", ],          ["banks/single-file.bank", ]),
         (["banks/1.bank", "banks/2.bank", ],    ["banks/1.bank", "banks/2.bank", ]),
     ]
 
-    @staticmethod
-    @patch("bddbot.config.open", new_callable = MockOpen)
-    def test_empty_value(mock_open):
-        """Verify setting an empty bank path value is an error."""
-        mock_open[DEFAULT_CONFIG_FILENAME].read_data = "\n".join([
-            "[paths]",
-            "bank:",
-        ])
-
+    def test_empty_value(self):
+        # Verify setting an empty bank path value is an error.
         with assert_raises(ConfigError) as error_context:
-            BotConfiguration()
+            self._create_config({"paths": {"bank": "", }, })
 
         assert_in("no features banks", error_context.exception.message.lower())
-        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
 
     def test_set_bank_path(self):
-        """Setting the bank value should set the appropriate attribute."""
         for (bank_paths, expected_paths) in self.CASES:
             yield (self._check_bank_path, bank_paths, expected_paths)
 
-    @staticmethod
-    @patch("bddbot.config.open", new_callable = MockOpen)
-    def _check_bank_path(bank_paths, expected_paths, mock_open):
-        # pylint: disable=missing-docstring
-        mock_open[DEFAULT_CONFIG_FILENAME].read_data = "\n".join([
-            "[paths]",
-            "bank: {:s}".format("\n    ".join(bank_paths)),
-        ])
+    def _check_bank_path(self, bank_paths, expected_paths):
+        self._create_config({
+            "paths": {
+                "bank": "\n".join(bank_paths),
+            },
+        })
 
-        config = BotConfiguration()
+        assert_equal(expected_paths, self.config.banks)
 
-        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
-        assert_equal(expected_paths, config.banks)
-        assert_equal([DEFAULT_TEST_COMMAND.split(), ], config.test_commands)
-
-class TestBDDTestCommands(object):
-    # pylint: disable=too-few-public-methods
-    """Test configuration of the test_command option."""
+class TestTestCommands(BaseConfigTest):
     CASES = [
         (["", ],                            []),
         (["", "", ],                        []),
@@ -114,21 +121,40 @@ class TestBDDTestCommands(object):
     ]
 
     def test_set_test_commands(self):
-        """Setting the test_command should set the appropriate attribute."""
-        for (test_commands, expected_commands) in self.CASES:
-            yield (self._check_test_command, test_commands, expected_commands)
+        for (actual_commands, expected_commands) in self.CASES:
+            yield (self._check_test_command, actual_commands, expected_commands)
 
-    @staticmethod
-    @patch("bddbot.config.open", new_callable = MockOpen)
-    def _check_test_command(test_commands, expected_commands, mock_open):
-        # pylint: disable=missing-docstring
-        mock_open[DEFAULT_CONFIG_FILENAME].read_data = "\n".join([
-            "[test]",
-            "run: {:s}".format("\n    ".join(test_commands)),
-        ])
+    def _check_test_command(self, actual_commands, expected_commands):
+        self._create_config({
+            "test": {
+                "run": "\n".join(actual_commands),
+            },
+        })
 
-        config = BotConfiguration()
+        assert_equal(expected_commands, self.config.tests)
+        assert_equal([], self.config.banks)
 
-        mock_open.assert_called_once_with(DEFAULT_CONFIG_FILENAME, "r")
-        assert_equal(expected_commands, config.test_commands)
-        assert_equal([], config.banks)
+class TestServer(BaseConfigTest):
+    def test_empty_value(self):
+        self._create_config({"server": {}, })
+
+        assert_is_none(self.config.host)
+        assert_is_none(self.config.port)
+
+    def test_set_host(self):
+        self._create_config({
+            "server": {
+                "host": HOST,
+            },
+        })
+
+        assert_equal(HOST, self.config.host)
+
+    def test_set_port(self):
+        self._create_config({
+            "server": {
+                "port": PORT,
+            },
+        })
+
+        assert_equal(PORT, self.config.port)

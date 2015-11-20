@@ -1,3 +1,4 @@
+@local
 Feature: Deal another scenario
     In order to continue developement
     As a developer

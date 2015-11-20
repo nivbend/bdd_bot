@@ -1,3 +1,4 @@
+@local
 Feature: Configure parameters
     In order to tweak the way the bot works
     As any type of user

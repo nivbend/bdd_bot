@@ -1,3 +1,4 @@
+@local
 Feature: Persistent State
     Scenarios are dealt with separate calls to the bot tool
     In order to work on a project for a period of time
