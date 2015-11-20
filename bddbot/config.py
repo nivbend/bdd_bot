@@ -22,6 +22,7 @@ class BotConfiguration(object):
 
         self.__banks = _get_banks(config)
         self.__tests = _get_tests(config)
+        self.__host = _get_host(config)
         self.__port = _get_port(config)
 
     @property
@@ -37,6 +38,11 @@ class BotConfiguration(object):
         module can later take (for example, `["behave", "--no-multiline", "--format=progress", ]`).
         """
         return self.__tests
+
+    @property
+    def host(self):
+        """Server's hostname (None if undefined)."""
+        return self.__host
 
     @property
     def port(self):
@@ -63,6 +69,14 @@ def _get_tests(config):
     # Return non-empty commands.
     commands = config.get("test", "run").splitlines()
     return [command.split() for command in commands if command]
+
+def _get_host(config):
+    """Get the server's hostname from configuration."""
+    if not config.has_option("server", "host"):
+        return None
+
+    host = config.get("server", "host")
+    return host
 
 def _get_port(config):
     """Get the server's port from configuration."""

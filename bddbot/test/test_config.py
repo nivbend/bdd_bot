@@ -4,7 +4,7 @@ from nose.tools import assert_equal, assert_in, assert_is_none, assert_raises
 from mock import Mock, patch
 from bddbot.config import BotConfiguration, ConfigError
 from bddbot.config import CONFIG_FILENAME
-from bddbot.test.constants import BANK_PATH_1, DEFAULT_TEST_COMMANDS, PORT
+from bddbot.test.constants import BANK_PATH_1, DEFAULT_TEST_COMMANDS, HOST, PORT
 
 class BaseConfigTest(object):
     # pylint: disable=missing-docstring
@@ -138,7 +138,17 @@ class TestServer(BaseConfigTest):
     def test_empty_value(self):
         self._create_config({"server": {}, })
 
+        assert_is_none(self.config.host)
         assert_is_none(self.config.port)
+
+    def test_set_host(self):
+        self._create_config({
+            "server": {
+                "host": HOST,
+            },
+        })
+
+        assert_equal(HOST, self.config.host)
 
     def test_set_port(self):
         self._create_config({

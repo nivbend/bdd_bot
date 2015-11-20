@@ -1,7 +1,6 @@
 """A server wrapper around dealer operations."""
 
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
-from socket import gethostname
 import logging
 from .bank import Bank
 
@@ -16,9 +15,9 @@ class BankServer(SimpleXMLRPCServer, object):
     """RPC command server."""
     allow_reuse_address = True
 
-    def __init__(self, port, banks):
+    def __init__(self, host, port, banks):
         super(BankServer, self).__init__(
-            (gethostname(), port),
+            (host, port),
             SimpleXMLRPCRequestHandler,
             logRequests = False)
         self.__banks = [Bank(path) for path in banks]

@@ -60,6 +60,7 @@ def server_is_started(context):
     assert_is_none(context.server)
     assert_is_none(context.server_thread)
     assert_in("server", context.bot_config)
+    assert_is_not_none(context.bot_config["server"].host)
     assert_is_not_none(context.bot_config["server"].port)
 
     # Change to side's sandbox.
@@ -67,6 +68,7 @@ def server_is_started(context):
     chdir(context.sandbox["server"].path)
 
     context.server = BankServer(
+        context.bot_config["server"].host,
         context.bot_config["server"].port,
         context.bot_config["server"].banks)
     context.server_thread = Thread(target = context.server.serve_forever)

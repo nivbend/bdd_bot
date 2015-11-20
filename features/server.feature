@@ -19,11 +19,12 @@ Feature: Remote bot server
             bank: banks/first.bank
 
             [server]
+            host: localhost
             port: 3037
             """
         When the dealer is loaded on the server
         And the server is started
-        Then port 3037 is open
+        Then port 3037 is open on localhost
 
     Scenario: Deal the first scenario
         Given the configuration file on the server:
@@ -32,6 +33,7 @@ Feature: Remote bot server
             bank: banks/first.bank
 
             [server]
+            host: localhost
             port: 3037
             """
         When the dealer is loaded on the server
@@ -39,7 +41,7 @@ Feature: Remote bot server
         Given the configuration file on the client:
             """
             [paths]
-            bank: @rhino:3037
+            bank: @localhost:3037
             """
         And a directory "features/steps" on the client
         When a scenario is dealt on the client
@@ -65,6 +67,7 @@ Feature: Remote bot server
                 banks/second.bank
 
             [server]
+            host: localhost
             port: 3037
             """
         And the file "banks/second.bank" on the server contains:
@@ -76,12 +79,12 @@ Feature: Remote bot server
         And the configuration file on client #1:
             """
             [paths]
-            bank: @rhino:3037
+            bank: @localhost:3037
             """
         And the configuration file on client #2:
             """
             [paths]
-            bank: @rhino:3037
+            bank: @localhost:3037
             """
         When the dealer is loaded on the server
         And the server is started

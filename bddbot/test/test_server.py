@@ -46,10 +46,9 @@ class BaseServerTest(BankMockerTest):
     def _create_server(self, banks):
         """Create a new server instance."""
         with patch("bddbot.server.Bank", self.mock_bank_class), \
-             patch("bddbot.server.gethostname", return_value = HOST), \
              patch("socket.socket", return_value = self.mock_socket), \
              patch("fcntl.fcntl"):
-            self.server = BankServer(PORT, banks)
+            self.server = BankServer(HOST, PORT, banks)
 
         self.mock_bank_class.assert_has_calls([call(path) for path in banks])
 
